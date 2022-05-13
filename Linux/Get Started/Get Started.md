@@ -1,5 +1,14 @@
 # Get Started !
 
+## Set Proxy
+
+```bash
+export http_proxy=http://101.43.121.224:7898
+export https_proxy=http://101.43.121.224:7898
+```
+
+
+
 ## **连接wifi**
 
 ### 1.nmcli
