@@ -74,6 +74,7 @@ exit 1       #中途退出脚本，并返回1
 **fg                    #回到上一个暂停进程**
 ps aux | grep " "     #获取进程信息，如PID
 kill (-s SIGINT) -9 xpid #结束进程 <==> Ctrl+C
+kill -9 `ps -ef|grep frpc.ini| grep -v grep| awk '{print $1}'`
 #SIGINT:中断 SIGTSTP:暂停 SIGQUIT:退出
 trap "echo 'interrupted';" SIGINT #捕获信号(异步)
 
@@ -408,7 +409,7 @@ sock.close()
 ## Camera
 
 - Motion 动作捕捉
-    
+  
     ```bash
     sudo apt install motion -y
     #/etc/default/motion

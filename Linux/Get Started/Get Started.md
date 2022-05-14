@@ -2,9 +2,23 @@
 
 ## Set Proxy
 
+### 1.Terminal
+
 ```bash
 export http_proxy=http://101.43.121.224:7898
 export https_proxy=http://101.43.121.224:7898
+```
+
+### 2.Git-Bash
+
+```bash
+#设置全局代理
+git config --global http.proxy socks5://127.0.0.1:1080
+git config --global https.proxy socks5://127.0.0.1:1080
+
+#取消全局代理
+git config --global --unset http.proxy
+git config --global --unset https.proxy
 ```
 
 
