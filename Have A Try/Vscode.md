@@ -6,4 +6,3 @@
 4. Ctrl + [     向左缩进 
 5. Ctrl + ]     向右缩进
 6. Shift + Ctrl + F 自动缩进
-
