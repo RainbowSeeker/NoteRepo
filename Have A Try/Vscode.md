@@ -5,4 +5,5 @@
 3. HOME / END   移动光标到行尾和行首
 4. Ctrl + [     向左缩进 
 5. Ctrl + ]     向右缩进
-6. Shift + Ctrl + F     **自动缩进**
+6. Shift + Ctrl + F 自动缩进
+
