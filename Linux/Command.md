@@ -179,9 +179,14 @@ groups , id
 ### 创建用户及用户组
 
 ```bash
-# 创建一个www用户
+#常用command
+sudo useradd -G sudo -m yangyu			#创建sudoer用户		-m:创建home-directory
+sudo usermod -s /bin/bash yangyu		#设置默认shell
+sudo passwd yangyu						#设置密码
+
+# 创建一个用户
 sudo useradd www
-# 创建一个www用户组
+# 创建一个用户组
 sudo groupadd www
 # www用户归属于www用户组
 sudo usermod -a -G www www
