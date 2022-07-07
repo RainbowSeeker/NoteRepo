@@ -43,11 +43,11 @@ sed -i 's|http://download.proxmox.com|https://mirrors.tuna.tsinghua.edu.cn/proxm
 
 1. `vi /etc/default/grub`
 
-![image-20220607205624849](F:\Desktop\NoteRepo\Application\PVE\image-20220607205624849.png)
+![image-20220607205624849](.\image-20220607205624849.png)
 
 2. `vi /etc/modules`
 
-![image-20220607205910250](F:\Desktop\NoteRepo\Application\PVE\image-20220607205910250.png)
+![image-20220607205910250](.\image-20220607205910250.png)
 
 ```
 update-grub
@@ -61,3 +61,35 @@ reboot
 qm importdisk 101 /var/lib/vz/template/iso/x86.img local-lvm
 ```
 
+
+
+### docker
+1. onekey
+```
+apt install curl -y
+curl -sSL https://get.daocloud.io/docker | sh
+```
+2. 换源
+```
+vi /etc/docker/daemon.json
+```
+
+```
+{
+  "registry-mirrors": [
+    "https://hub-mirror.c.163.com",
+    "https://ustc-edu-cn.mirror.aliyuncs.com",
+    "https://ghcr.io",
+    "https://mirror.baidubce.com"
+  ]
+}
+```
+
+```
+service docker restart
+```
+3. 安装 `portainer`
+```bash
+docker volume create portainer_data
+docker run -d -p 8000:8000 -p 9000:9000 --name=portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce
+```

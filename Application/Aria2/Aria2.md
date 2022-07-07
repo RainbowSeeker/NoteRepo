@@ -36,7 +36,7 @@ node node.js
 
 1. 打开网站 [http://192.168.10.109:8888](http://192.168.10.109:8888) ,输入链接下载即可
 
-![Untitled](%E7%A6%BB%E7%BA%BF%E4%B8%8B%E8%BD%BD%20Aria2%20d4eaa/Untitled.png)
+![Untitled](./Untitled.png)
 
 dir: 下载路径
 
