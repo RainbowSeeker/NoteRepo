@@ -89,7 +89,7 @@ myInfo(){
 myInfo log      #调用该函数,log为参数
 
 #结构
-if [ -e $1]          case $var in         while []    
+if [ -e $1 ]          case $var in         while []    
 then                 root)                do          
 	..                   ..                   ..          
 else                 ;;                   done        

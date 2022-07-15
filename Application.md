@@ -18,6 +18,8 @@
 
 [h5ai下载站  (Nginx+PHP+Aria2)](Application/h5ai下载站.md)
 
+[PVE](Application\PVE\pve.md )
+
 [MC Server](Application/MC Server/MC Server.md)
 
 [天气助手](Application/天气助手/天气助手.md)

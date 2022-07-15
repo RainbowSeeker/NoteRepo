@@ -1,21 +1,21 @@
-# Frp 远程连接PC
+# Frp
 
 1. 安装 frp 服务端
 
 ```bash
-cd ~ && wget -O frp https://github.com/fatedier/frp/releases/download/v0.40.0/frp_0.40.0_linux_amd64.tar.gz
-cd frp/ 
-chmod +x ./frps
+cd ~ && wget -q https://github.com/fatedier/frp/releases/download/v0.44.0/frp_0.44.0_linux_amd64.tar.gz && tar -zxvf frp_0.44.0_linux_amd64.tar.gz && mv frp_0.44.0_linux_amd64 frp && rm frp_0.44.0_linux_amd64.tar.gz
 ```
 
 ```bash
+cd frp/
+chmod +x ./frps
 ./frps -c frps.ini
 ```
 
 1. 配置成系统服务
 
 ```bash
-sudo nano /etc/systemd/system/frps.service
+vi /etc/systemd/system/frps.service
 ```
 
 ```bash
@@ -34,9 +34,13 @@ WantedBy=multi-user.target
 ```
 
 ```bash
-sudo systemctl daemon-reload
-sudo systemctl restart frps.service
-sudo systemctl status frps.service
+systemctl daemon-reload
+systemctl enable frps.service
+```
+
+```bash
+systemctl restart frps.service
+systemctl status frps.service
 ```
 
 1. 放行端口
