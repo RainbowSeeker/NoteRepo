@@ -17,6 +17,7 @@ tail -3 one.txt  #输出后3行
 
 #文件搜索
 find [path] -name "*.c" [-ls]
+locate [name]	 #新文件需要先更新数据库 sudo updatedb
 
 #压缩
 tar -zcvf directory directory.gz

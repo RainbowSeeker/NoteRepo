@@ -63,6 +63,23 @@ qm importdisk 101 /var/lib/vz/template/iso/x86.img local-lvm
 
 
 
+### 为容器加入渲染器硬件，并关闭AppArmor（部分显卡可能需要更新内核才能找到渲染器）
+
+```
+vi /etc/pve/lxc/[CT_ID].conf
+```
+
+加入硬件参数：（可先用ls -l /dev/dri查询）
+
+```
+lxc.cgroup2.devices.allow: c 226:0 rwm
+lxc.cgroup2.devices.allow: c 226:128 rwm
+lxc.cgroup2.devices.allow: c 29:0 rwm
+lxc.mount.entry: /dev/dri dev/dri none bind,optional,create=dir
+lxc.mount.entry: /dev/fb0 dev/fb0 none bind,optional,create=file
+lxc.apparmor.profile: unconfined
+```
+
 ## docker
 
 1. onekey
@@ -93,4 +110,38 @@ service docker restart
 ```bash
 docker volume create portainer_data
 docker run -d -p 8000:8000 -p 9000:9000 --name=portainer --restart=always -v /var/run/docker.sock:/var/run/docker.sock -v portainer_data:/data portainer/portainer-ce
+```
+
+## 挂载远程smb
+
+安装SMB组件并创建共享目录（nas_share可自定义）
+
+```
+apt install cifs-utils -y
+mkdir /mnt/nas_share
+```
+
+创建密码文件（注意保护文件，此处为明文密码）：
+
+```
+vi /root/.smbcredentials
+```
+
+设置SMB登录密码，自行替换：
+
+```
+username=smb_share
+password=share_password
+```
+
+修改自动挂载文件
+
+```
+vi /etc/fstab
+```
+
+加入挂载位置，自行替换
+
+```
+//192.168.10.4/dsm_video0 /mnt/video0 cifs credentials=/root/.smbcredentials,iocharset=utf8,vers=1.0 0 0
 ```
