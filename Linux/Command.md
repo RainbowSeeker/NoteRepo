@@ -1,3 +1,5 @@
+[TOC]
+
 # Command
 
 ## File
@@ -6,7 +8,7 @@
 #文件操作
 file one.txt     #查看文件类型
 touch empty.txt  #新建文件
-mkdir (-p) new        #新建目录
+mkdir (-p) new   #新建目录
 rmdir new        #移除目录
 cp -r doc1 doc2  #拷贝目录下所有文件
 rm -r doc2       #移除目录下所有文件
@@ -16,13 +18,17 @@ head -2 one.txt  #输出前2行
 tail -3 one.txt  #输出后3行
 
 #文件搜索
+whereis who	#whereis只能搜索二进制文件（-b），man 帮助文件（-m）和源代码文件（-s）
+which who	#which	定位命令位置
 find [path] -name "*.c" [-ls]
 locate [name]	 #新文件需要先更新数据库 sudo updatedb
 
 #压缩
 tar -zcvf directory directory.gz
+zip -r -q -o -l test.zip test01/ #linux下文本文件打包压缩需要加上-l参数将LF转换为CR+LF
 #解压缩
-tar -zxvf directory directory.gz
+tar -zxvf directory directory.gz -C ~	#指定路径：-C 参数
+unzip -q test.zip -d test01			#如果你不想解压只想查看压缩包的内容你可以使用 -l 参数：unzip -q -l test.zip -G GBK #指定编码类型
 
 #软链接
 ln -s source.txt direction.txt #--链接文件，相当于快捷方式
@@ -31,7 +37,7 @@ ln -s source.txt direction.txt #--链接文件，相当于快捷方式
 ls > output.log           ls >> output.log #如果已存在则附加在结尾
 ls 1> output.log 2> error.log  #1:stdout 2:stderr
 ls &> output_error.log #1+2
-grep abc < content.txt
+grep -E "abc" < content.txt	# -E 正则模式匹配
 #pipe
 ls | grep txt | wc -l #word count
 cat 1.txt | sort | uniq > 2.txt #删除重复
@@ -48,14 +54,62 @@ sudo chmod a+r,u+w,g+o,o-o file.txt #修改对应组别的权限
 #文件系统 FAT:window ext4:raspberry NTFS:Network
 sudo fdisk -l          #查看磁盘信息
 sudo umount /dev/sda1  #卸载磁盘
-sudo df -h             #report file system disk space usage
-free -h                #**缓冲**
+sudo df -h             #查看磁盘的容量
+du -h -d 0 ~		   #查看目录的容量 -d:depth
+free -h                #缓冲
+
 #/bin:可执行文件
 #/etc:配置文件 .conf   *rc
 #/proc:硬件信息 cat /proc/cpuinfo
 ```
 
-## Bash
+### find
+
+格式： **find [path] [option] [action]**
+
+与时间相关的命令参数：
+
+| 参数     | 说明                   |
+| -------- | ---------------------- |
+| `-atime` | 最后访问时间           |
+| `-ctime` | 最后修改文件内容的时间 |
+| `-mtime` | 最后修改文件属性的时间 |
+
+下面以 `-mtime` 参数举例：
+
+- `-mtime n`：n 为数字，表示为在 n 天之前的“一天之内”修改过的文件
+- `-mtime +n`：列出在 n 天之前（不包含 n 天本身）被修改过的文件
+- `-mtime -n`：列出在 n 天之内（包含 n 天本身）被修改过的文件
+- `-newer file`：file 为一个已存在的文件，列出比 file 还要新的文件名
+
+![1](assets/5-8.png)
+
+![img](assets/4-1.png)
+
+## Shell
+
+`cat /etc/shells` 	查看当前系统已安装的 Shell
+
+### 变量
+
+| 命 令    | 说 明                                                        |
+| -------- | ------------------------------------------------------------ |
+| `set`    | 显示当前 Shell 所有变量，包括其内建环境变量（与 Shell 外观等相关），用户自定义变量及导出的环境变量。 |
+| `env`    | 显示与当前用户相关的环境变量，还可以让命令在指定环境中运行。 |
+| `export` | 显示从 Shell 中导出成环境变量的变量，也能通过它将自定义变量导出为环境变量。 |
+
+#### 变量修改
+
+变量的修改有以下几种方式：
+
+| 变量设置方式                   | 说明                                         |
+| ------------------------------ | -------------------------------------------- |
+| `${变量名#匹配字串}`           | 从头向后开始匹配，删除符合匹配字串的最短数据 |
+| `${变量名##匹配字串}`          | 从头向后开始匹配，删除符合匹配字串的最长数据 |
+| `${变量名%匹配字串}`           | 从尾向前开始匹配，删除符合匹配字串的最短数据 |
+| `${变量名%%匹配字串}`          | 从尾向前开始匹配，删除符合匹配字串的最长数据 |
+| `${变量名/旧的字串/新的字串}`  | 将符合旧字串的第一个字串替换为新的字串       |
+| `${变量名//旧的字串/新的字串}` | 将符合旧字串的全部字串替换为新的字串         |
 
 ```bash
 #变量
@@ -63,6 +117,8 @@ var=abc    # ' $var'==>纯文本  " $var"==>可以加入变量
 echo $var  #or ${var}
 now=`date` #将date的输出存入now <==> now=$(date)
 read name  #将键盘输入存入name
+unset var  #删除环境变量
+source ~/.bashrc #使环境变量生效 source <==> .
 
 #返回代码
 echo $?      #正常运行则返回0
@@ -72,7 +128,7 @@ echo $1      #获得第1个参数
 exit 1       #中途退出脚本，并返回1
 
 #Signal信号
-**fg                    #回到上一个暂停进程**
+fg                    #回到上一个暂停进程
 ps aux | grep " "     #获取进程信息，如PID
 kill (-s SIGINT) -9 xpid #结束进程 <==> Ctrl+C
 kill -9 `ps -ef|grep frpc.ini| grep -v grep| awk '{print $1}'`
@@ -426,3 +482,5 @@ sock.close()
     framerate 30
     sudo service motion start
     ```
+
+[option]: 

@@ -5,8 +5,8 @@
 ### 1.Terminal
 
 ```bash
-export http_proxy=http://101.43.121.224:7898
-export https_proxy=http://101.43.121.224:7898
+export http_proxy=http://127.0.0.1:7898
+export https_proxy=http://127.0.0.1:7898
 ```
 
 ### 2.Git-Bash
@@ -21,7 +21,14 @@ git config --global --unset http.proxy
 git config --global --unset https.proxy
 ```
 
+## ssh SerectKey
 
+​	主机端创建密钥并将公钥发送至 username@ip
+
+```bash
+ssh-keygen -t rsa
+ssh-copy-id -i ~/.ssh/id_rsa.pub username@ip
+```
 
 ## **连接wifi**
 
@@ -51,11 +58,11 @@ nmcli c del __UUID__
 
 ---
 
-![Untitled](F:\Desktop\Notion\Linux\Get Started\Untitled-16508812543321.png)
+![Untitled](assets/Untitled-16508812543321.png)
 
 ### 2.wpa_supplicant
 
-![Untitled](F:\Desktop\Notion\Linux\Get Started\Untitled 1-16508812543332.png)
+![Untitled](assets/Untitled 1-16508812543332.png)
 
 ## OpenSSH
 
@@ -70,15 +77,6 @@ sudo ps -ef|grep ssh
 
 ```bash
 sudo systemctl enable ssh
-```
-
-## ssh 密钥
-
-​	主机端创建密钥并将公钥发送至 username@ip
-
-```bash
-ssh-keygen -t rsa
-ssh-copy-id -i ~/.ssh/id_rsa.pub username@ip
 ```
 
 ## 系统更新
@@ -110,13 +108,13 @@ echo "deb http://mirrors.tuna.tsinghua.edu.cn/raspbian/raspbian/ bullseye main n
 echo "deb http://mirrors.tuna.tsinghua.edu.cn/raspberrypi/ bullseye main" > ~/raspi.list && sudo mv ~/raspi.list /etc/apt/sources.list.d/
 ```
 
-> ### 编辑 `/etc/apt/sources.list.d/raspi.list` 文件，删除原文件所有内容，用以下内容取代：
+> 编辑 `/etc/apt/sources.list.d/raspi.list` 文件，删除原文件所有内容，用以下内容取代：
 >
 > deb http://mirrors.tuna.tsinghua.edu.cn/raspberrypi/ bullseye main
 
-- ****Ubuntu换源后，更新提示GPG error缺少公钥****
+- Ubuntu换源后，更新提示GPG error缺少公钥
 
-  ![Untitled](F:\Desktop\Notion\Linux\Get Started\Untitled 2-16508812543333.png)
+  ![Untitled](assets/Untitled 2-16508812543333.png)
 
 ## PIP换源
 
@@ -144,4 +142,4 @@ sudo apt install speedtest-cli
 speedtest-cli
 ```
 
-![Untitled](./Untitled 3.png)
+![Untitled](assets/Untitled 3.png)

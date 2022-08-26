@@ -1,3 +1,5 @@
+[TOC]
+
 # Git Tutorial
 
 [Usage pdf]: ./git-cheat-sheet.pdf
@@ -32,19 +34,22 @@ git commit -m <message>
 git status
 ```
 
-> 💡 如果`git status`告诉你有文件被修改过，用`git diff`可以查看修改内容
+
+
+> :dizzy: 如果`git status`告诉你有文件被修改过，用`git diff`可以查看修改内容
 
 4. 版本回退
 
 ```bash
 git reset --hard commit_id
+git reset --soft HEAD~1		#撤销上 1 次commit
 ```
 
 特殊的，`git reset --hard HEAD^` 可以回退到上一个版本（HEAD 指针指向第一个版本）。
 
 Git提供了一个命令`git reflog`用来记录你的每一次命令，以便确定要回到未来的哪个版本
 
-> 💡Tips:
+> Tips:
 >
 > - 当你改乱了工作区某个文件的内容，想直接丢弃工作区的修改时，用命令`git checkout -- file`。
 > - 当你不但改乱了工作区某个文件的内容，还添加到了暂存区时，想丢弃修改，分两步，第一步用命令`git reset HEAD <file>`，就回到了场景1，第二步按场景1操作。
@@ -61,7 +66,7 @@ ssh-keygen -t rsa -C "1911466766@qq.com"
 
 接着接可以在用户主目录里找到`.ssh`目录，里面有`id_rsa`和`id_rsa.pub`两个文件。
 
-2. 添加ssh keys到github
+2. 添加ssh keys到github 
 
 > 复制id_rsa.pub中的内容到Key中
 
@@ -73,6 +78,8 @@ ssh-keygen -t rsa -C "1911466766@qq.com"
 
 4. 将本地库的所有内容推送到远程库上
 
+
+
 ```bash
 git remote add origin git@github.com:RainbowSeeker/learngit.git
 git branch -M main
@@ -81,7 +88,7 @@ git push -u origin main		#push!
 git remote get-url --all origin		#查看已保存的远程库链接
 ```
 
-> 💡之后提交新版本只需要 `git push origin [master]`
+> :dizzy:之后提交新版本只需要 `git push origin [master]`
 
 ## Branch
 
@@ -138,7 +145,7 @@ git cherry-pick commit_id
 git pull
 ```
 
-> 💡 如果`git pull`提示`no tracking information`，则说明本地分支和远程分支的链接关系没有创建，用命令`git branch --set-upstream-to <branch-name> origin/<branch-name>`。
+> :dizzy: 如果`git pull`提示`no tracking information`，则说明本地分支和远程分支的链接关系没有创建，用命令`git branch --set-upstream-to <branch-name> origin/<branch-name>`。
 
 ## Tag
 
