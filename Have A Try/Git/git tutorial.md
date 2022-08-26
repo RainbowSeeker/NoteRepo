@@ -34,8 +34,6 @@ git commit -m <message>
 git status
 ```
 
-
-
 > :dizzy: 如果`git status`告诉你有文件被修改过，用`git diff`可以查看修改内容
 
 4. 版本回退
