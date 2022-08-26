@@ -59,7 +59,7 @@ du -h -d 0 ~		   #查看目录的容量 -d:depth
 free -h                #缓冲
 
 #/bin:可执行文件
-#/etc:配置文件 .conf   *rc
+#/etc:配置文件 .conf *rc
 #/proc:硬件信息 cat /proc/cpuinfo
 ```
 
