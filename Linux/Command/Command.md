@@ -16,6 +16,7 @@ mv xxx1 xxx2     #移动/重命名
 cat one.txt      #输出整个文件
 head -2 one.txt  #输出前2行
 tail -3 one.txt  #输出后3行
+sort -n -r		 #-n:对数字排序 -r:反转结果
 
 #文件搜索
 whereis who	#whereis只能搜索二进制文件（-b），man 帮助文件（-m）和源代码文件（-s）
@@ -55,7 +56,7 @@ sudo chmod a+r,u+w,g+o,o-o file.txt #修改对应组别的权限
 sudo fdisk -l          #查看磁盘信息
 sudo umount /dev/sda1  #卸载磁盘
 sudo df -h             #查看磁盘的容量
-du -h -d 0 ~		   #查看目录的容量 -d:depth
+du -h -d 0 ~		   #查看目录的容量 -d:depth -b:Bytes
 free -h                #缓冲
 
 #/bin:可执行文件
@@ -115,7 +116,7 @@ free -h                #缓冲
 #变量
 var=abc    # ' $var'==>纯文本  " $var"==>可以加入变量
 echo $var  #or ${var}
-now=`date` #将date的输出存入now <==> now=$(date)
+now=`date "+%Y-%m-%d %H:%M:%S"` #将date的输出存入now <==> now=$(date)
 read name  #将键盘输入存入name
 unset var  #删除环境变量
 source ~/.bashrc #使环境变量生效 source <==> .
@@ -129,7 +130,7 @@ exit 1       #中途退出脚本，并返回1
 
 #Signal信号
 fg                    #回到上一个暂停进程
-ps aux | grep " "     #获取进程信息，如PID
+ps aux | grep " "     #获取进程信息，如PID <==> pgrep
 kill (-s SIGINT) -9 xpid #结束进程 <==> Ctrl+C
 kill -9 `ps -ef|grep frpc.ini| grep -v grep| awk '{print $1}'`
 #SIGINT:中断 SIGTSTP:暂停 SIGQUIT:退出
@@ -168,7 +169,7 @@ sudo fdisk -l
 df -h
 #挂载到指定路径
 sudo mkdir /mnt/usb_flash
-sudo mount -t vfat -o uid=pi,gid=pi,iocharset=utf8 /dev/sda1 /mnt/usb_flash
+sudo mount -t vfat -o uid=pi,gid=pi,iocharset=utf8 --rw /dev/sda1 /mnt/usb_flash
 #设置默认挂载
 sudo nano /etc/fstab
 
@@ -201,6 +202,33 @@ sudo mkfs.ext4 /dev/sda1
 sudo mkfs.ext3 /dev/sda1
 ```
 
+### dd
+
+​	`dd` 可以用在备份硬件的引导扇区、获取一定数量的随机数据（`/dev/random`）或者空数据（`/dev/zero`）等任务中。`dd` 程序也可以在复制时处理数据，例如转换字节序、或在 ASCII 与 EBCDIC 编码间互换。
+
+```bash
+#从标准输入读入用户的输入到一个文件
+dd of=test bs=10 count=1 # 或者 dd if=/dev/stdin of=test bs=10 count=1
+#从标准输入读入用户的输入到标准输出
+dd if=/dev/stdin of=/dev/stdout bs=10 count=1
+
+#dd 实现数据转换，将输出的英文字符转换为大写再写入文件
+dd of=test bs=10 count=1 conv=ucase
+
+#dd 创建虚拟镜像文件
+dd if=/dev/zero of=virtual.img bs=1M count=256
+sudo mkfs.ext4 virtual.img
+#查看Linux支持哪些文件系统 (wsl不支持)
+ls -l /lib/modules/$(uname -r)/kernel/fs
+mount -t ext4 -o loop --rw virtual.img /mnt  #读写方式挂载
+```
+
+> /dev/loop（或称 vnd （vnode disk）、lofi（循环文件接口））是一种伪设备，这种设备使得文件可以如同块设备一般被访问。
+>
+> 在使用之前，循环设备必须与现存文件系统上的文件相关联。这种关联将提供给用户一个应用程序接口，接口将允许文件视为块特殊文件（参见设备文件系统）使用。因此，如果文件中包含一个完整的文件系统，那么这个文件就能如同磁盘设备一般被挂载。
+>
+> 这种设备文件经常被用于光盘或是磁盘镜像。通过循环挂载来挂载包含文件系统的文件，便使处在这个文件系统中的文件得以被访问。这些文件将出现在挂载点目录。如果挂载目录中本身有文件，这些文件在挂载后将被禁止使用
+
 ## String
 
 ```bash
@@ -211,7 +239,7 @@ echo $string |cut -c 1-4    #hell
 
 #${}
 string="hello,shell,haha"
-array=${string//,/ }    **#按'，'分隔**
+array=${string//,/ }    #按'，'分隔
 for var in ${array[@]}    
 do
 echo $var
@@ -252,11 +280,36 @@ sudo usermod -a -G www www
 ## **Exe**
 
 ```bash
+type exit		#内建命令实际上是 shell 程序的一部分,其执行速度比外部命令快
+type vim		#外部命令是 Linux 系统中的实用程序部分,是在 Bash 之外额外安装的，通常放在/bin，/usr/bin，/sbin，/usr/sbin 等等
 which date          #定位可执行文件
-type date           ****#打印指令类型，如为exe则再打印文件的路径
-****alias xxx="free -h" #**起别名，类似于宏定义define**
-man ls              #**返回帮助文档**
+alias xxx="free -h" #起别名，类似于宏定义define
+man ls              #返回帮助文档
 ```
+
+## CronTab
+
+1. 安装日志 `rsyslog`
+
+```bash
+sudo apt-get install -y rsyslog
+sudo service rsyslog start
+```
+
+2. 启动 `cron`
+
+```bash
+sudo cron －f &
+crontab -e			#-l:列出任务  -r:删除任务
+```
+
+<img src="assets/image-20220827103310762.png" alt="image-20220827103310762" style="zoom: 50%;" />
+
+```bash
+* * * * * touch /home/yangyu/$(date "+\%Y-\%m-\%d")
+```
+
+> “ % ” 在 crontab 文件中，有结束命令行、换行、重定向的作用，前面加 ” \ ” 符号转义，否则，“ % ” 符号将执行其结束命令行或者换行的作用，并且其后的内容会被做为标准输入发送给前面的命令。
 
 ## 网络协议
 
@@ -295,7 +348,7 @@ scp ~/local root@192.168.xx.xx:~/remote
 scp root@192.168.xx.xx:~/remote ~/local
 ```
 
-# NTP 服务
+## NTP 服务
 
 ```bash
 sudo apt install ntp
@@ -482,5 +535,3 @@ sock.close()
     framerate 30
     sudo service motion start
     ```
-
-[option]: 
