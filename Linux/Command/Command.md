@@ -17,6 +17,7 @@ cat one.txt      #输出整个文件
 head -2 one.txt  #输出前2行
 tail -3 one.txt  #输出后3行
 sort -n -r		 #-n:对数字排序 -r:反转结果
+more/less		 #对文件进行翻页显示，Space进行翻页，回车下一行，Ctrl+B上一行(less)
 
 #文件搜索
 whereis who	#whereis只能搜索二进制文件（-b），man 帮助文件（-m）和源代码文件（-s）
@@ -26,7 +27,7 @@ locate [name]	 #新文件需要先更新数据库 sudo updatedb
 
 #压缩
 tar -zcvf directory directory.gz
-zip -r -q -o -l test.zip test01/ #linux下文本文件打包压缩需要加上-l参数将LF转换为CR+LF
+zip -r -q -o -l test.zip test01/ #linux下文本文件打包压缩到windows需要加上-l参数将LF转换为CR+LF
 #解压缩
 tar -zxvf directory directory.gz -C ~	#指定路径：-C 参数
 unzip -q test.zip -d test01			#如果你不想解压只想查看压缩包的内容你可以使用 -l 参数：unzip -q -l test.zip -G GBK #指定编码类型
@@ -40,8 +41,10 @@ ls 1> output.log 2> error.log  #1:stdout 2:stderr
 ls &> output_error.log #1+2
 grep -E "abc" < content.txt	# -E 正则模式匹配
 #pipe
-ls | grep txt | wc -l #word count
+ls | grep txt | wc -l #word count:-l:行数 -w:单词数 -c:字节数 -m:字符数 -L:最长行字节数
 cat 1.txt | sort | uniq > 2.txt #删除重复
+cat /etc/passwd | sort -t ':' -k 3 -n #以':'为分隔符，对第3个字段进行排序
+	#sort: -u:uniq
 
 #权限
 sudo chown (-R) pi:pi file.txt #(递归)改变文件的拥有者和拥有组
@@ -234,10 +237,10 @@ mount -t ext4 -o loop --rw virtual.img /mnt  #读写方式挂载
 ```bash
 string="hello world"
 #cut
-echo $string |cut -d" " -f1 #hello 1表示输出分割后的第一个字段 1-表示输出字段1以及后边的所有字段
+echo $string |cut -d" " -f 1 #hello 1表示输出分割后的第一个字段 1-表示输出字段1以及后边的所有字段
 echo $string |cut -c 1-4    #hell
 
-#${}
+#字符串截取
 string="hello,shell,haha"
 array=${string//,/ }    #按'，'分隔
 for var in ${array[@]}    
@@ -245,10 +248,29 @@ do
 echo $var
 done
 
-**echo ${#string}  # 11  获得字符串长度**
+echo ${#string}  # 11  获得字符串长度
 string="http://www.test.com"
 echo ${string#*//} # www.test.com '#'号截取，删除左边字符，保留右边字符
+
+string='hello world'
+echo ${string:0:7}		#hello w	从左开始第0个字节后截取7个字节
+echo ${string:0-5:3}	#wor		从右开始第5个字节后截取3个字节
 #more:https://blog.csdn.net/Jayccccc_chao/article/details/85281529
+
+#tr: 删除/替换/转换文本
+echo 'hello shiyanlou' | tr -d 'olh' #删除 "hello shiyanlou" 中所有的'o'，'l'，'h'	
+echo 'hello' | tr -s 'l'		 # 将"hello" 中的ll，去重为一个l
+echo 'hello' | tr '[a-z]' '[A-Z]'# 将输入文本，全部转换为大写或小写输出
+echo 'hello' | tr 'hello' 'HELLO'# 替换文本，注意为逐个字符替换 h->H,e->E..
+
+#col: 过滤控制字符
+cat /etc/protocols | col -x | cat -A	# 将Tab转换为空格
+
+#join: 两个文件中指定栏位内容相同的行连接起来
+sudo join -t ':' -1 4 /etc/passwd -2 3 /etc/group	#-t: 指定分隔符 -1:指明第一个文件对比字段 -2:...
+
+#paste: 将多个文件按行队列合并
+paste -d ':' file1 file2 file3	#-d:指定合并的换行符  -s:每个文件各成一行
 ```
 
 ## **WHO**
