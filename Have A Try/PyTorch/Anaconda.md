@@ -27,13 +27,6 @@ show_channel_urls: true
 ssl_verify: false
 ```
 
-加入 pytorch 源
-
-```bash
-conda config --add channels https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch/
-(https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/pytorch/)
-```
-
 ### 2.激活环境
 
 ```bash
