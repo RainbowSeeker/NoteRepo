@@ -80,6 +80,23 @@ lxc.mount.entry: /dev/fb0 dev/fb0 none bind,optional,create=file
 lxc.apparmor.profile: unconfined
 ```
 
+
+
+```bash
+pct create 200 \
+        local:vztmpl/openwrt-x86-64-ipv6-generic-rootfs.tar.gz \
+        --rootfs local-lvm:8 \
+        --ostype unmanaged \
+        --hostname RainWrt \
+        --arch amd64 \
+        --cores 4 \
+        --memory 2048 \
+        --swap 0 \
+        -net0 bridge=vmbr0,name=eth0
+```
+
+
+
 ## docker
 
 1. onekey
