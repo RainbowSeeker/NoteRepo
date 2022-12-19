@@ -1,6 +1,6 @@
 # Frp
 
-1. 安装 frp 服务端
+## 安装 frp 服务端
 
 ```bash
 cd ~ && wget -q https://github.com/fatedier/frp/releases/download/v0.44.0/frp_0.44.0_linux_amd64.tar.gz && tar -zxvf frp_0.44.0_linux_amd64.tar.gz && mv frp_0.44.0_linux_amd64 frp && rm frp_0.44.0_linux_amd64.tar.gz
@@ -12,7 +12,7 @@ chmod +x ./frps
 ./frps -c frps.ini
 ```
 
-1. 配置成系统服务
+### 1.配置成系统服务
 
 ```bash
 vi /etc/systemd/system/frps.service
@@ -43,14 +43,31 @@ systemctl restart frps.service
 systemctl status frps.service
 ```
 
-1. 放行端口
+### 2.放行端口
 
-![Untitled](./Untitled.png)
+<img src="./Untitled.png" alt="Untitled" style="zoom: 50%;" />
 
-1. 启动 客户端 client
+## 启动 客户端 client
 
-![Untitled](./Untitled%201.png)
+### 1.配置成系统服务
 
-![Untitled](./Untitled%202.png)
+```bash
+[common]
+server_addr = 101.43.121.224
+server_port = 7000
+auth_token = 12134
 
-1. PC 开机运行脚本 AlwaysUp
+[ssh]
+type = tcp
+local_ip = 127.0.0.1
+local_port = 22
+remote_port = 6000
+[jupyter]
+type = tcp
+local_ip = 127.0.0.1
+local_port = 8888
+remote_port = 8888
+```
+
+
+

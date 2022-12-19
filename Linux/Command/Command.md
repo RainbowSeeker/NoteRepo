@@ -39,6 +39,8 @@ ln -s source.txt direction.txt #--链接文件，相当于快捷方式
 ls > output.log           ls >> output.log #如果已存在则附加在结尾
 ls 1> output.log 2> error.log  #1:stdout 2:stderr
 ls &> output_error.log #1+2
+./test.sh >/dev/null 2>&1	#将输出到垃圾桶
+
 grep -E "abc" < content.txt	# -E 正则模式匹配
 #pipe
 ls | grep txt | wc -l #word count:-l:行数 -w:单词数 -c:字节数 -m:字符数 -L:最长行字节数

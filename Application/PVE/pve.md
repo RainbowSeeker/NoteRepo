@@ -47,7 +47,12 @@ sed -i 's|http://download.proxmox.com|https://mirrors.tuna.tsinghua.edu.cn/proxm
 
 2. `vi /etc/modules`
 
-![image-20220607205910250](.\image-20220607205910250.png)
+```
+vfio
+vfio_iommu_type1
+vfio_pci
+vfio_virqfd
+```
 
 ```
 update-grub
