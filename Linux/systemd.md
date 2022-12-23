@@ -5,7 +5,7 @@
 Systemd默认从目录/etc/systemd/system/读取配置文件。但是里面存放的大部分文件都是符号链接，指向目录/usr/lib/systemd/system/，真正的配置文件存放在那个目录。比如：我们创建一个Nginx的服务
 
 ```bash
-sudo nano /etc/systemd/system/nginx.service
+sudo vi /etc/systemd/system/nginx.service
 ```
 
 ## 2.编写配置文件
