@@ -3,7 +3,9 @@
 1. 安装 frp 服务端
 
 ```bash
-cd ~ && wget -q https://github.com/fatedier/frp/releases/download/v0.44.0/frp_0.44.0_linux_amd64.tar.gz && tar -zxvf frp_0.44.0_linux_amd64.tar.gz && mv frp_0.44.0_linux_amd64 frp && rm frp_0.44.0_linux_amd64.tar.gz
+cd ~ && wget -O frp.tar.gz https://github.com/fatedier/frp/releases/download/v0.44.0/frp_0.44.0_linux_amd64.tar.gz 
+tar -zxvf frp.tar.gz 
+rm frp_0.44.0_linux_amd64.tar.gz
 ```
 
 ```bash
