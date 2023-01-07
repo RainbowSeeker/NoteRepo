@@ -199,7 +199,7 @@
 
 ##### 1.Correct
 
-包含姿态校正和陀螺零偏校正。
+包含姿态校正和陀螺偏差校正。
 
 ![image-20221227184553179](./assets/image-20221227184553179.png)
 
@@ -253,6 +253,22 @@
 
 
 
+​	2. Mag_Correct
+
+![image-20230103183055050](./assets/image-20230103183055050.png)
+
+这部分是取出`M_OB`的第三行后转置，故实际得到为`n3`在b-frame 下的坐标。
+
+![image-20230103183241435](./assets/image-20230103183241435.png)
+
+这里将b-frame 下的磁场值点乘`M_OB`的第二行，得到 n-frame 下
+
+y-axis 的磁场值（一般情况下 y-axis 磁场值应为 0，否则则表明航向heading 存在误差，故与上一步的向量相乘，使其往相反方向转动，将航向误差消除）。
+
+![image-20230103185435524](./assets/image-20230103185435524.png)
+
+
+
 
 
 ##### 2.Update
@@ -287,3 +303,75 @@ q_0 \\ q_1 \\ q_2 \\ q_3
 \end{bmatrix}_{t}\\
 $$
 ![image-20221228105918036](./assets/image-20221228105918036.png)
+
+
+
+接下来是转义滤波，用于获取速度以及位置信息。
+
+#### 3.TF_Data_PreProcess
+
+##### 1.Sensor_Process
+
+对传感器数据进行整理，同时按照优先级分别选取 水平向 和 垂直向的传感器。
+
+![image-20230104142138677](./assets/image-20230104142138677.png)
+
+水平向 Prio：GPS > optflow
+
+![image-20230104142306696](./assets/image-20230104142306696.png)
+
+垂直向 Prio： RangeFinder > GPS > baro
+
+![image-20230104142409885](./assets/image-20230104142409885.png)
+
+故在本套设备中水平向以及垂直向的传感器均使用 GPS 。
+
+##### 2.Transfer_Filter_Control
+
+- Sensor_Valid
+  评估各传感器数据的有效性。
+
+![image-20230104143928395](./assets/image-20230104143928395.png)
+
+![image-20230104144022798](./assets/image-20230104144022798.png)
+
+若传感器有效，则对应数据有效，有效的保持时长为1s。
+
+- Filter_Reset
+
+若 xy_R 由无效变为有效，则将位置信息复位更新。同理 h_R 信号上升沿将高度信息复位更新。
+
+![image-20230104144305375](./assets/image-20230104144305375.png)
+
+- WGS84_Reference
+
+Position_Ref 当 <lon_lat_valid> 由无效变为有效即上升沿时，保存此刻位置作为后续参考位置。
+
+![image-20230104150510712](./assets/image-20230104150510712.png)
+
+Height_Ref 同上，保存此刻高度作为后续参考高度。
+
+#### 4.CF
+
+##### 1.Horizontal_Filter
+
+- Predict
+
+Propagate 状态的确定 ：pos_reset 有效时重新获取位置与速度 作为此刻状态；无效时直接取上一次状态。
+
+![image-20230104152029048](./assets/image-20230104152029048.png)
+
+Update：X[1:2] --> pos = pos + X[3:4] (v) * dt
+
+​					X[3:4] --> v  = v + X[5:6] (a) *dt
+
+​					X[5:6] --> a = 0
+
+![image-20230104154045558](./assets/image-20230104154045558.png)
+
+- Correct
+
+GPS Correct:
+
+![image-20230104154550013](./assets/image-20230104154550013.png)
+
