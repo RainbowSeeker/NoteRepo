@@ -9,8 +9,14 @@
 ### 1.install driver
 
 - 安装 [ch340 ch341 driver](https://gitee.com/rainbowseeker9/maix_train/releases/download/installer/CH341SER.EXE )
-
 - 安装 [maixpy ide](https://gitee.com/rainbowseeker9/maix_train/releases/download/installer/maixpy-ide-windows-0.2.5.exe)
+- 下载 [kflash_gui](https://gitee.com/rainbowseeker9/maix_train/releases/download/installer/kflash_gui.exe)， 直接打开无需安装
+
+> 下载[k210固件](https://gitee.com/rainbowseeker9/maix_train/releases/download/installer/maixpy_v0.6.2_84_g8fcd84a58.bin)，在`kflash_gui`里打开你下载完成的k210固件。
+>
+> 使用数据线连接上k210，此时端口选项里会新增COMx，选择新增的COMx，下载即可（下载进度条未动则说明可能连接错误的COMx，下拉选择框选择其余的试一试）。
+>
+> <img src="./assets/image-20230108161943605.png" alt="image-20230108161943605" style="zoom:67%;" />
 
 ### 2. install python
 
@@ -102,7 +108,7 @@ pip install tensorflow-gpu==2.3.0 -i https://pypi.mirrors.ustc.edu.cn/simple
 
 ![image-20230107164908416](./assets/image-20230107164908416.png)
 
-连接成功后，在`MaixPy IDE`的最上面一行`工具`里选择`将打开的脚本保存到开发板的 boot.py`，等待完成后为k210重新上电。
+连接成功后，在`MaixPy IDE`的最上面一行`工具`里选择`将打开的脚本保存到开发板的 boot.py`，等待完成后为k210重新上电（无需再点击`MaixPy IDE`左下角连接）。
 
 对需要识别的物品拍照，按一下k210左侧按键，照片便会自动保存至sd卡中，效果如下图所示。
 
@@ -184,9 +190,33 @@ labelimg
 
     python train.py -t detector -z datasets/[your_dataset_name].zip train
 
-训练完之后就会得到一个out的文件夹，里面的文件就是训练之后得到的模型。将该文件存入SD卡中，训练过程就大功告成了。
+训练完之后就会得到一个out的文件夹，里面的文件就是训练之后得到的模型。
 
 ![image-20230107111707755](./assets/image-20230107111707755.png)
+
+使用`kflash_gui`将模型烧录至 0x300000，如下图所示，确认无误后点击下载。
+
+> 注意一定要修改地址为0x300000，否则k210成砖了！
+
+![image-20230108162822132](./assets/image-20230108162822132.png)
+
+## Run
+
+这里提供了一份[测试代码](https://gitee.com/rainbowseeker9/maix_train/releases/download/installer/pycode.zip)， 使用时请先解压，然后将`motor.py`， `pid.py`拷贝到sd卡中，最后在`Maixpy IDE`中打开`main.py`，如下图所示。
+
+<img src="./assets/image-20230108165939256.png" alt="image-20230108165939256" style="zoom:67%;" />
+
+> 注意：第29，30行的参数来源于你的模型，在你out文件夹下（与`m.kmodel`同一目录）有一个`boot.py`文件，打开后有类似的`labels anchors`，请自行复制。
+>
+> ![image-20230108170215419](./assets/image-20230108170215419.png)
+
+插入sd卡，将k210通过数据线连接到电脑，然后点击左下角连接。
+
+![image-20230107164908416](./assets/image-20230107164908416.png)
+
+连接成功后，在`MaixPy IDE`的最上面一行`工具`里选择`将打开的脚本保存到开发板的 boot.py`，等待完成后为k210重新上电（无需再点击`MaixPy IDE`左下角连接）。此时k210将会运行`main.py`中的内容，等待几秒若屏幕显示图像，则运行正常。
+
+> 此后，若修改了main.py里的代码，要使其生效，只需重复上面一行话的操作即可。
 
 ## 常见问题
 
