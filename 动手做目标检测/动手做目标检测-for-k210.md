@@ -26,13 +26,13 @@
 
 <img src="./assets/image-20230106214145288.png" alt="image-20230106214145288" style="zoom:50%;" />
 
-安装之后的python，按win+r，输入cmd打开命令行，然后输入python+回车，出现下图则表示python安装成功。
+安装之后的python，按win+r，输入cmd打开命令行，然后输入`python -V`，出现下图则表示python安装成功。
 
-<img src="./assets/image-20230106214503383.png" alt="image-20230106214503383" style="zoom: 50%;" />
+![image-20230110113900354](assets/image-20230110113900354.png)
 
 ### 3. install CUDA & CUDNN （Optional）
 
-> 对于模型的训练，可以使用CPU或者是GPU。如果你的电脑**安装有 NVIDIA 显卡**（**桌面右下角有下图所示绿色图标**），那么恭喜你，你可以使用GPU加速模型的训练；如果没有，那么你可以点击[这里](##Install Packages)***跳过教程的本部，直接使用CPU进行训练***。
+> 对于模型的训练，可以使用CPU或者是GPU。如果你的电脑**安装有10系或者20系的 NVIDIA 显卡**（**不清楚品牌的同学可以用CPU**），那么恭喜你，你可以使用GPU加速模型的训练；如果没有，那么你可以点击[这里](##Install Packages)***跳过教程的本部，直接使用CPU进行训练***。
 >
 > <img src="./assets/image-20230106220515913.png" alt="image-20230106220515913" style="zoom: 67%;" />
 >
