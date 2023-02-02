@@ -188,7 +188,7 @@ labelimg
 
 命令行输入
 
-    python train.py -t detector -z datasets/[your_dataset_name].zip train
+    python train.py -t detector -d datasets/[your_dataset_name] train
 
 训练完之后就会得到一个out的文件夹，里面的文件就是训练之后得到的模型。
 
@@ -208,7 +208,11 @@ labelimg
 
 > 注意：第29，30行的参数来源于你的模型，在你out文件夹下（与`m.kmodel`同一目录）有一个`boot.py`文件，打开后有类似的`labels anchors`，请自行复制。
 >
-> ![image-20230108170215419](./assets/image-20230108170215419.png)
+> ![image-20230202173808753](./assets/image-20230202173808753.png)
+>
+> ![image-20230202173835418](./assets/image-20230202173835418.png)
+
+
 
 插入sd卡，将k210通过数据线连接到电脑，然后点击左下角连接。
 
