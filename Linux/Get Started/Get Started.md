@@ -30,7 +30,16 @@ ssh-keygen -t rsa
 ssh-copy-id -i ~/.ssh/id_rsa.pub username@ip
 ```
 
-## **连接wifi**
+## **上网**
+
+### 0.ifconfig
+
+```bash
+#ifconfig配置ip，网关，dns
+ifconfig eth0 192.168.0.50 netmask 255.255.255.0
+route add default gw 192.168.0.1 eth0
+echo "nameserver 8.8.8.8" | tee /etc/resolv.conf > /dev/null
+```
 
 ### 1.nmcli
 
