@@ -84,8 +84,15 @@ sudo make mrproper
 sudo make ARCH=powerpc 83xx/mpc837x_rdb_defconfig
 sudo make ARCH=powerpc CROSS_COMPILE=powerpc-linux-gnu- -j8
 
-sudo make ARCH=powerpc CROSS_COMPILE=powerpc-linux-gnu- menuconfig //set tick hz to 1000 
+sudo make ARCH=powerpc CROSS_COMPILE=powerpc-linux-gnu- menuconfig //set tick hz to 1000,enable Preemptible Kernel
+patch -p1 < ../patch-6.6.5-rt16.patch
 ```
+
+![image-20231213104455872](./assets/image-20231213104455872.png)
+
+![image-20231213104538878](./assets/image-20231213104538878.png)
+
+![image-20231213104719803](./assets/image-20231213104719803.png)
 
 ## Part 3: dts
 
@@ -104,7 +111,7 @@ sudo make ARCH=powerpc CROSS_COMPILE=powerpc-linux-gnu- mpc8378_rdb.dtb
 
 注释掉pci，usb等驱动项，修改flash空间分配项：
 
-<img src="assets/image-20231028211603269.png" alt="image-20231028211603269" style="zoom:50%;" />
+![image-20231213105540590](./assets/image-20231213105540590.png)
 
 ## Part 4: rootfs
 
@@ -113,25 +120,21 @@ sudo make ARCH=powerpc CROSS_COMPILE=powerpc-linux-gnu- mpc8378_rdb.dtb
 ```bash
 cd buildroot/
 sudo make menuconfig
-sudo make -j1
+sudo make -j8
 
-cd ../linux/
-sudo ln -s ~/vmc/buildroot/output/target/ ./rootfs
+cd ../linux-6.6.7
 sudo make ARCH=powerpc CROSS_COMPILE=powerpc-linux-gnu- modules
-sudo make ARCH=powerpc modules_install INSTALL_MOD_PATH=~/vmc/linux/rootfs
+sudo make ARCH=powerpc modules_install INSTALL_MOD_PATH=/home/yangyu/buildroot-2023.02.8/output/target
 
-sudo vi ./rootfs/etc/network/interfaces
+cd ../buildroot-2023.02.8/
+sudo vi output/target/etc/network/interfaces
 auto eth0
 iface eth0 inet static
-address 192.168.0.2
+address 192.168.8.25
 netmask 255.255.255.0
-gateway 192.168.0.1
+gateway 192.168.8.1
 
-sudo vi ./rootfs/etc/vsftpd.conf
-local_enable=YES
-write_enable=YES
-
-sudo vi ./rootfs/etc/profile
+sudo vi output/target/etc/profile
 PS1='\u@\h:\w$:'
 export PS1
 #if [ "$PS1" ]; then
@@ -141,13 +144,40 @@ export PS1
 #               export PS1='$ '
 #       fi
 #fi
-cd ../buildroot/
 
-sudo cp package/busybox/S10mdev output/target/etc/init.d/
-sudo chmod +x output/target/etc/init.d/S10mdev
-sudo mkimage -A ppc -O linux -T ramdisk -C gzip -d output/images/rootfs.ext2.gz output/images/rootfs.ext2.gz.uboot
+sudo vi output/target/etc/init.d/S80mod
+#! /bin/sh
+DESC="modprobe"
+case "$1" in
+  start)
+        printf "Starting $DESC: "
+        modprobe m1394
+        modprobe uart
+        modprobe gaio
+        modprobe gdio
+        echo "OK"
+        ;;
+  stop)
+        printf "Stopping $DESC: "
+        echo "OK"
+        ;;
+  restart|force-reload)
+        echo "Restarting $DESC: "
+        $0 stop
+        sleep 1
+        $0 start
+        echo ""
+        ;;
+  *)
+        echo "Usage: $0 {start|stop|restart|force-reload}" >&2
+        exit 1
+        ;;
+esac
+exit 0
+sudo chmod 755 output/target/etc/init.d/S80mod
 
-sudo make -j1
+sudo vi output/target/etc/init.d/S50dropbear
+DROPBEAR_ARGS="-ER"
 ```
 
 ### 1.Target
