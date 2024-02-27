@@ -125,7 +125,8 @@ sudo make ARCH=powerpc CROSS_COMPILE=powerpc-linux-gnu- modules
 sudo make ARCH=powerpc modules_install INSTALL_MOD_PATH=/home/yangyu/buildroot-2023.02.9/output/target
 
 cd ../buildroot
-sudo vi output/target/etc/network/interfaces
+
+sudo vi output/target/etc/network/interfaces # nfs 不需要配置networks
 auto eth0
 iface eth0 inet static
 address 192.168.8.25
