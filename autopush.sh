@@ -15,6 +15,7 @@ check_local_update(){
     git diff --quiet HEAD .
     if [ $? -eq 0 ]; then
         echo "No local changes. Exiting..."
+        read -s -n 1 -p "Press any key to exit..."
         exit 0
     else
         echo "Detect local change. Ready to push..."
@@ -30,3 +31,4 @@ if [ -z "$commit" ]; then
 fi
 git add . && echo "git commit -m \"$commit\"" | bash  && git push origin -f &&
 read -s -n 1 -p "Press any key to exit..."
+exit 0
