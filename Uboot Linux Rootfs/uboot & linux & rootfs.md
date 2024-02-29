@@ -44,23 +44,28 @@ nfsboot="setenv bootargs console=ttyS0,115200 root=/dev/nfs nfsroot=$serverip:/n
 
 ```bash
 sudo ln -s /home/yangyu/u-boot/tools/mkimage /usr/bin/mkimage
+# make patch
+git diff > ~/kernel.patch
+# add new files to tar.gz
+tar zcvf ~/src.tar.gz ` git status --short | sed 's/^ *[^ ]* \(.*\)/\1/g' `
 ```
 
 https://git.kernel.org/pub/scm/linux/kernel/git/rt/linux-stable-rt.git
 
 ```bash
-wget https://git.kernel.org/pub/scm/linux/kernel/git/rt/linux-stable-rt.git/snapshot/linux-stable-rt-5.15.148-rt74.tar.gz
+wget https://git.kernel.org/pub/scm/linux/kernel/git/rt/linux-stable-rt.git/snapshot/linux-stable-rt-5.10.162-rt78.tar.gz
 # Patch
+cd linux-
 patch -p1 < ../kernel.patch
+tar zxvf ~/src.tar.gz -C .
 
 sudo make mrproper
 sudo make ARCH=powerpc 83xx/mpc837x_rdb_defconfig
 sudo make ARCH=powerpc CROSS_COMPILE=powerpc-linux-gnu- -j8
 
 # sudo make ARCH=powerpc CROSS_COMPILE=powerpc-linux-gnu- menuconfig //set tick hz to 1000,enable Preemptible Kernel
+# turn on CONFIG_VMC_DRIVER
 ```
-
-
 
 ![image-20231213104719803](./assets/image-20231213104719803.png)
 
@@ -88,7 +93,7 @@ BR2_generic_powerpc=y
 
 # Toolchain
 BR2_KERNEL_HEADERS_CUSTOM_TARBALL=y
-BR2_KERNEL_HEADERS_CUSTOM_TARBALL_LOCATION="https://git.kernel.org/pub/scm/linux/kernel/git/rt/linux-stable-rt.git/snapshot/linux-stable-rt-6.6.15-rt22.tar.gz"
+BR2_KERNEL_HEADERS_CUSTOM_TARBALL_LOCATION="https://git.kernel.org/pub/scm/linux/kernel/git/rt/linux-stable-rt.git/snapshot/linux-stable-rt-5.10.162-rt78.tar.gz"
 BR2_TOOLCHAIN_BUILDROOT_CXX=y
 BR2_PACKAGE_HOST_GDB=y
 BR2_PACKAGE_GDB=y
@@ -120,22 +125,14 @@ cd buildroot/
 sudo make mpc8378e_defconfig
 sudo make -j8
 
-cd ../linux-*
+cd ../linux-
 sudo make ARCH=powerpc CROSS_COMPILE=powerpc-linux-gnu- modules
 sudo make ARCH=powerpc modules_install INSTALL_MOD_PATH=/home/yangyu/buildroot-2023.02.9/output/target
 
 cd ../buildroot
 
-sudo vi output/target/etc/network/interfaces # nfs 不需要配置networks
-auto eth0
-iface eth0 inet static
-address 192.168.8.25
-netmask 255.255.255.0
-gateway 192.168.8.1
-
 sudo vi output/target/etc/profile
-PS1='\u@\h:\w$:'
-export PS1
+export PS1='\u@\h:\w$:'
 #if [ "$PS1" ]; then
 #       if [ "`id -u`" -eq 0 ]; then
 #               export PS1='# '
@@ -144,6 +141,29 @@ export PS1
 #       fi
 #fi
 
+
+# ssh
+sudo vi output/target/etc/ssh/sshd_config
+PermitRootLogin yes
+PasswordAuthentication yes
+PermitEmptyPasswords yes
+sudo cp ../key/ssh_host* output/target/etc/ssh/
+sudo chmod 400 output/target/etc/ssh/ssh_host*
+
+# nfs
+sudo mkdir output/target/mnt/nfs
+sudo vi output/target/etc/fstab # 最后一行添加
+192.168.8.20:/home/yangyu/nfs   /mnt/nfs       nfs     defaults        0       0
+
+# Deprecated
+sudo vi output/target/etc/network/interfaces
+auto eth0
+iface eth0 inet static
+address 192.168.8.25
+netmask 255.255.255.0
+gateway 192.168.8.1
+
+# Deprecated
 sudo vi output/target/etc/init.d/S80mod
 #! /bin/sh
 DESC="modprobe"
@@ -175,19 +195,6 @@ case "$1" in
 esac
 exit 0
 sudo chmod 755 output/target/etc/init.d/S80mod
-
-# ssh
-sudo vi output/target/etc/ssh/sshd_config
-PermitRootLogin yes
-PasswordAuthentication yes
-PermitEmptyPasswords yes
-sudo cp ../key/ssh_host* output/target/etc/ssh/
-sudo chmod 400 output/target/etc/ssh/ssh_host*
-
-# nfs
-sudo mkdir output/target/mnt/nfs
-sudo vi output/target/etc/fstab # 最后一行添加
-192.168.8.20:/home/yangyu/nfs   /mnt/nfs       nfs     defaults        0       0
 ```
 
 ### 1.Target
