@@ -1,8 +1,8 @@
 #!/bin/bash
 
 check_remote_update(){
-    git fetch 
-    git diff --quiet HEAD origin
+    git fetch origin
+    git diff --quiet HEAD origin/main
     if [ $? -eq 0 ]; then
         echo "No remote updates available."
     else
