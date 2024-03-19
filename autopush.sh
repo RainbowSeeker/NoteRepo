@@ -19,6 +19,7 @@ check_local_update(){
         exit 0
     else
         echo "Detect local change. Ready to push..."
+        git diff --stat
     fi
 }
 
