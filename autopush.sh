@@ -30,6 +30,6 @@ read -p "Please enter your commit: " commit
 if [ -z "$commit" ]; then
     commit=`date +"%Y-%m-%d %H:%M:%S autopush"`
 fi
-git add . && echo "git commit -m \"$commit\"" | bash  && git push origin -f &&
+git add . && echo -e "git commit -m \"$commit\"" | bash  && git push origin -f &&
 read -s -n 1 -p "Press any key to exit..."
 exit 0
