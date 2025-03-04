@@ -1,0 +1,478 @@
+diff --git a/arch/powerpc/cpu/mpc83xx/cpu.c b/arch/powerpc/cpu/mpc83xx/cpu.c
+index f6ffe295b8..64f45386c7 100644
+--- a/arch/powerpc/cpu/mpc83xx/cpu.c
++++ b/arch/powerpc/cpu/mpc83xx/cpu.c
+@@ -127,6 +127,15 @@ int checkcpu(void)
+ #ifndef CONFIG_SYSRESET
+ int do_reset(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
+ {
++	volatile uint32_t *reset = (uint32_t *) 0xC20C313C;
++	puts("Resetting the board.\n");
++	*reset = 1;
++	sync();
++	isync();
++	udelay(2000 * 1000);
++
++	return 1;
++#if 0
+ 	ulong msr;
+ 	volatile immap_t *immap = (immap_t *) CONFIG_SYS_IMMR;
+ 
+@@ -152,6 +161,7 @@ int do_reset(struct cmd_tbl *cmdtp, int flag, int argc, char *const argv[])
+ 	immap->reset.rcr = RCR_SWHR;
+ 
+ 	return 1;
++#endif // 0
+ }
+ #endif
+ 
+diff --git a/arch/powerpc/dts/mpc8379erdb.dts b/arch/powerpc/dts/mpc8379erdb.dts
+index 3db5ececae..290dbebf2a 100644
+--- a/arch/powerpc/dts/mpc8379erdb.dts
++++ b/arch/powerpc/dts/mpc8379erdb.dts
+@@ -47,6 +47,49 @@
+ 		reg = <0xe0005000 0x1000>;
+ 		interrupts = <77 0x8>;
+ 		interrupt-parent = <&ipic>;
++
++		ranges = <0x0 0x0 0xff800000 0x00800000
++		          0x1 0x0 0xc0000000 0x01800000
++		          0x2 0x0 0xc2000000 0x02000000>;
++
++		nor_flash0@0,0 {
++			#address-cells = <1>;
++			#size-cells = <1>;
++			compatible = "cfi-flash";
++			reg = <0x0 0x0 0x800000>;
++			bank-width = <2>;
++			device-width = <1>;
++
++			u-boot@600000 {
++				reg = <0x600000 0x80000>;
++				read-only;
++			};
++		};
++
++		nor_flash1@1,0 {
++			#address-cells = <1>;
++			#size-cells = <1>;
++			compatible = "cfi-flash";
++			reg = <0x1 0x0 0x1800000>;
++			bank-width = <2>;
++			device-width = <1>;
++
++			kernel@0 {
++				reg = <0x0 0x400000>;
++			};
++			fs@400000 {
++				reg = <0x400000 0x1400000>;
++			};
++		};
++
++		fpga@2,0 {
++			#address-cells = <0x01>;
++			#size-cells = <0x01>;
++			compatible = "simple-bus";
++			reg = <0x02 0x00 0xc4000>;
++			bank-width = <0x04>;
++			device-width = <0x01>;
++		};
+ 	};
+ 
+ 	immr@e0000000 {
+@@ -70,7 +113,7 @@
+ 			device_type = "serial";
+ 			compatible = "fsl,ns16550", "ns16550";
+ 			reg = <0x4500 0x100>;
+-			clock-frequency = <333333000>;
++			clock-frequency = <266000000>;
+ 			interrupts = <9 0x8>;
+ 			interrupt-parent = <&ipic>;
+ 			bootph-all;
+@@ -81,7 +124,7 @@
+ 			device_type = "serial";
+ 			compatible = "fsl,ns16550", "ns16550";
+ 			reg = <0x4600 0x100>;
+-			clock-frequency = <333333000>;
++			clock-frequency = <266000000>;
+ 			interrupts = <10 0x8>;
+ 			interrupt-parent = <&ipic>;
+ 			bootph-all;
+@@ -112,29 +155,33 @@
+ 			cell-index = <0>;
+ 			device_type = "network";
+ 			model = "eTSEC";
+-			compatible = "fsl,etsec2";
++			compatible = "gianfar";
+ 			reg = <0x24000 0x1000>;
+ 			ranges = <0x0 0x24000 0x1000>;
+ 			local-mac-address = [ 00 00 00 00 00 00 ];
+ 			interrupts = <32 0x8 33 0x8 34 0x8>;
+-			phy-connection-type = "mii";
++			phy-connection-type = "rgmii";
+ 			interrupt-parent = <&ipic>;
+ 			fixed-link = <1 0 1000 0 0>;
+ 			phy-handle = <&phy>;
++			tbi-handle = <&tbi0>;
+ 			fsl,magic-packet;
++		};
++
++		mdio@24520 {
++			#address-cells = <1>;
++			#size-cells = <0>;
++			compatible = "fsl,gianfar-mdio";
++			reg = <0x24520 0x20>;
++
++			phy: ethernet-phy@0 {
++				reg = <0x0>;
++				device_type = "ethernet-phy";
++			};
+ 
+-			mdio@520 {
+-				#address-cells = <1>;
+-				#size-cells = <0>;
+-				compatible = "fsl,etsec2-mdio";
+-				reg = <0x520 0x20>;
+-
+-				phy: ethernet-phy@2 {
+-					interrupt-parent = <&ipic>;
+-					interrupts = <17 0x8>;
+-					reg = <0x2>;
+-					device_type = "ethernet-phy";
+-				};
++			tbi0: tbi-phy@10 {
++				reg = <0x10>;
++				device_type = "tbi-phy";
+ 			};
+ 		};
+ 
+diff --git a/configs/MPC837XERDB_defconfig b/configs/MPC837XERDB_defconfig
+index 9eac43a0fc..264503a3c3 100644
+--- a/configs/MPC837XERDB_defconfig
++++ b/configs/MPC837XERDB_defconfig
+@@ -1,14 +1,14 @@
+ CONFIG_PPC=y
+-CONFIG_TEXT_BASE=0xFE000000
++CONFIG_TEXT_BASE=0xFFE00000
+ CONFIG_SYS_MALLOC_LEN=0x80000
+ CONFIG_ENV_SIZE=0x4000
+-CONFIG_ENV_SECT_SIZE=0x10000
++CONFIG_ENV_SECT_SIZE=0x20000
+ CONFIG_DEFAULT_DEVICE_TREE="mpc8379erdb"
+ CONFIG_SYS_MONITOR_LEN=524288
+ CONFIG_DEBUG_UART_BASE=0xe0004500
+-CONFIG_DEBUG_UART_CLOCK=333333000
+-CONFIG_SYS_CLK_FREQ=66666667
+-CONFIG_ENV_ADDR=0xFE080000
++CONFIG_DEBUG_UART_CLOCK=266000000
++CONFIG_SYS_CLK_FREQ=33000000
++CONFIG_ENV_ADDR=0xFFE80000
+ # CONFIG_SYS_PCI_64BIT is not set
+ CONFIG_MPC83xx=y
+ CONFIG_HIGH_BATS=y
+@@ -34,39 +34,41 @@ CONFIG_BAT0_DCACHE_MEMORYCOHERENCE=y
+ CONFIG_BAT0_USER_MODE_VALID=y
+ CONFIG_BAT0_SUPERVISOR_MODE_VALID=y
+ CONFIG_BAT1=y
+-CONFIG_BAT1_NAME="SDRAM_UPPER"
+-CONFIG_BAT1_BASE=0x10000000
+-CONFIG_BAT1_LENGTH_256_MBYTES=y
++CONFIG_BAT1_NAME="IMMR"
++CONFIG_BAT1_BASE=0xE0000000
++CONFIG_BAT1_LENGTH_8_MBYTES=y
+ CONFIG_BAT1_ACCESS_RW=y
+-CONFIG_BAT1_ICACHE_MEMORYCOHERENCE=y
+-CONFIG_BAT1_DCACHE_MEMORYCOHERENCE=y
++CONFIG_BAT1_ICACHE_INHIBITED=y
++CONFIG_BAT1_DCACHE_INHIBITED=y
++CONFIG_BAT1_DCACHE_GUARDED=y
+ CONFIG_BAT1_USER_MODE_VALID=y
+ CONFIG_BAT1_SUPERVISOR_MODE_VALID=y
+ CONFIG_BAT2=y
+-CONFIG_BAT2_NAME="IMMR"
+-CONFIG_BAT2_BASE=0xE0000000
++CONFIG_BAT2_NAME="FLASH0"
++CONFIG_BAT2_BASE=0xFF800000
+ CONFIG_BAT2_LENGTH_8_MBYTES=y
+ CONFIG_BAT2_ACCESS_RW=y
+-CONFIG_BAT2_ICACHE_INHIBITED=y
++CONFIG_BAT2_ICACHE_MEMORYCOHERENCE=y
+ CONFIG_BAT2_DCACHE_INHIBITED=y
+ CONFIG_BAT2_DCACHE_GUARDED=y
+ CONFIG_BAT2_USER_MODE_VALID=y
+ CONFIG_BAT2_SUPERVISOR_MODE_VALID=y
+ CONFIG_BAT3=y
+-CONFIG_BAT3_NAME="L2_SWITCH"
+-CONFIG_BAT3_BASE=0xF0000000
++CONFIG_BAT3_NAME="FLASH1"
++CONFIG_BAT3_BASE=0xC0000000
++CONFIG_BAT3_LENGTH_32_MBYTES=y
+ CONFIG_BAT3_ACCESS_RW=y
+-CONFIG_BAT3_ICACHE_INHIBITED=y
++CONFIG_BAT3_ICACHE_MEMORYCOHERENCE=y
+ CONFIG_BAT3_DCACHE_INHIBITED=y
+ CONFIG_BAT3_DCACHE_GUARDED=y
+ CONFIG_BAT3_USER_MODE_VALID=y
+ CONFIG_BAT3_SUPERVISOR_MODE_VALID=y
+ CONFIG_BAT4=y
+-CONFIG_BAT4_NAME="FLASH"
+-CONFIG_BAT4_BASE=0xFE000000
++CONFIG_BAT4_NAME="FPGA"
++CONFIG_BAT4_BASE=0xC2000000
+ CONFIG_BAT4_LENGTH_32_MBYTES=y
+ CONFIG_BAT4_ACCESS_RW=y
+-CONFIG_BAT4_ICACHE_MEMORYCOHERENCE=y
++CONFIG_BAT4_ICACHE_INHIBITED=y
+ CONFIG_BAT4_DCACHE_INHIBITED=y
+ CONFIG_BAT4_DCACHE_GUARDED=y
+ CONFIG_BAT4_USER_MODE_VALID=y
+@@ -97,17 +99,21 @@ CONFIG_BAT7_DCACHE_GUARDED=y
+ CONFIG_BAT7_USER_MODE_VALID=y
+ CONFIG_BAT7_SUPERVISOR_MODE_VALID=y
+ CONFIG_LBLAW0=y
+-CONFIG_LBLAW0_BASE=0xFE000000
++CONFIG_LBLAW0_BASE=0xFF800000
+ CONFIG_LBLAW0_NAME="FLASH"
+ CONFIG_LBLAW0_LENGTH_8_MBYTES=y
+ CONFIG_LBLAW1=y
+-CONFIG_LBLAW1_BASE=0xE0600000
++CONFIG_LBLAW1_BASE=0xC0000000
+ CONFIG_LBLAW1_NAME="NAND"
+-CONFIG_LBLAW1_LENGTH_32_KBYTES=y
++CONFIG_LBLAW1_LENGTH_32_MBYTES=y
+ CONFIG_LBLAW2=y
+-CONFIG_LBLAW2_BASE=0xF0000000
++CONFIG_LBLAW2_BASE=0xF9000000
+ CONFIG_LBLAW2_NAME="VSC7385"
+-CONFIG_LBLAW2_LENGTH_128_KBYTES=y
++CONFIG_LBLAW2_LENGTH_64_MBYTES=y
++CONFIG_LBLAW3=y
++CONFIG_LBLAW3_BASE=0xC2000000
++CONFIG_LBLAW3_NAME="FPGA"
++CONFIG_LBLAW3_LENGTH_32_MBYTES=y
+ CONFIG_HID0_FINAL_EMCP=y
+ CONFIG_HID0_FINAL_ICE=y
+ CONFIG_HID2_HBE=y
+@@ -119,7 +125,7 @@ CONFIG_LCRR_CLKDIV_8=y
+ CONFIG_FSL_SERDES=y
+ CONFIG_USE_UBOOTPATH=y
+ CONFIG_DEBUG_UART=y
+-CONFIG_BOOTDELAY=6
++CONFIG_BOOTDELAY=2
+ CONFIG_OF_BOARD_SETUP=y
+ CONFIG_OF_STDOUT_VIA_ALIAS=y
+ CONFIG_SYS_PBSIZE=276
+@@ -132,14 +138,14 @@ CONFIG_CMD_I2C=y
+ CONFIG_LOADS_ECHO=y
+ CONFIG_SYS_LOADS_BAUD_CHANGE=y
+ CONFIG_CMD_MMC=y
+-CONFIG_CMD_PCI=y
+-CONFIG_CMD_SATA=y
+-CONFIG_CMD_USB=y
++CONFIG_CMD_PCI=n
++CONFIG_CMD_SATA=n
++CONFIG_CMD_USB=n
+ # CONFIG_CMD_SETEXPR is not set
+ CONFIG_BOOTP_BOOTFILESIZE=y
+ CONFIG_CMD_MII=y
+ CONFIG_CMD_PING=y
+-CONFIG_CMD_DATE=y
++CONFIG_CMD_DATE=n
+ CONFIG_CMD_EXT2=y
+ CONFIG_CMD_FAT=y
+ CONFIG_OF_CONTROL=y
+@@ -155,14 +161,17 @@ CONFIG_ROOTPATH="/nfsroot"
+ CONFIG_FSL_SATA=y
+ CONFIG_SYS_SATA_MAX_DEVICE=2
+ CONFIG_SYS_BR0_PRELIM_BOOL=y
+-CONFIG_SYS_BR0_PRELIM=0xFE001001
+-CONFIG_SYS_OR0_PRELIM=0xFF800193
++CONFIG_SYS_BR0_PRELIM=0xFF801001
++CONFIG_SYS_OR0_PRELIM=0xFF800FF7
+ CONFIG_SYS_BR1_PRELIM_BOOL=y
+-CONFIG_SYS_BR1_PRELIM=0xE0600C21
+-CONFIG_SYS_OR1_PRELIM=0xFFFF8396
++CONFIG_SYS_BR1_PRELIM=0xC0001001
++CONFIG_SYS_OR1_PRELIM=0xFE000FF7
+ CONFIG_SYS_BR2_PRELIM_BOOL=y
+-CONFIG_SYS_BR2_PRELIM=0xF0000801
+-CONFIG_SYS_OR2_PRELIM=0xFFFE09FF
++CONFIG_SYS_BR2_PRELIM=0xF9000821
++CONFIG_SYS_OR2_PRELIM=0xFC0003CC
++CONFIG_SYS_BR3_PRELIM_BOOL=y
++CONFIG_SYS_BR3_PRELIM=0xC2001801
++CONFIG_SYS_OR3_PRELIM=0xFE000025
+ CONFIG_SYS_I2C_LEGACY=y
+ CONFIG_SYS_I2C_FSL=y
+ CONFIG_SYS_FSL_I2C_OFFSET=0x3000
+@@ -171,24 +180,42 @@ CONFIG_SYS_I2C_SPEED=400000
+ CONFIG_FSL_ESDHC=y
+ CONFIG_FSL_ESDHC_PIN_MUX=y
+ CONFIG_MTD=y
++CONFIG_DM_MTD=y
+ CONFIG_MTD_NOR_FLASH=y
++CONFIG_FLASH_CFI_MTD=y
+ CONFIG_FLASH_CFI_DRIVER=y
+-CONFIG_FLASH_SHOW_PROGRESS=0
++# CONFIG_FLASH_SHOW_PROGRESS=0
+ CONFIG_SYS_FLASH_USE_BUFFER_WRITE=y
+-CONFIG_SYS_FLASH_EMPTY_INFO=y
+-CONFIG_SYS_FLASH_PROTECTION=y
++CONFIG_CFI_FLASH=y
+ CONFIG_SYS_FLASH_CFI=y
+ CONFIG_SYS_MAX_FLASH_SECT=256
++CONFIG_SYS_MAX_FLASH_BANKS=2
+ CONFIG_DM_MDIO=y
+ CONFIG_DM_ETH_PHY=y
+ CONFIG_RGMII=y
+ CONFIG_MII=y
+-CONFIG_VSC7385_ENET=y
++CONFIG_PHY_MARVELL=y
+ CONFIG_TSEC_ENET=y
+-CONFIG_RTC_DS1374=y
++CONFIG_RTC_DS1374=n
+ CONFIG_SPECIFY_CONSOLE_INDEX=y
+ CONFIG_DM_SERIAL=y
+ CONFIG_SYS_NS16550=y
+ CONFIG_USB=y
+ CONFIG_USB_EHCI_HCD=y
+ CONFIG_USB_EHCI_FSL=y
++CONFIG_USE_BOOTCOMMAND=y
++CONFIG_BOOTCOMMAND="if ping $serverip;then echo Server is available.Boot From nfs...; run nfsboot;else echo Boot From flash...;run flashboot;fi;"
++CONFIG_USE_BOOTARGS=y
++CONFIG_BOOTARGS="console=ttyS0,115200 rootfstype=ramfs rw init=/linuxrc"
++CONFIG_NET_RANDOM_ETHADDR=y
++CONFIG_USE_IPADDR=y
++CONFIG_IPADDR="192.168.8.25"
++CONFIG_USE_NETMASK=y
++CONFIG_NETMASK="255.255.255.0"
++CONFIG_USE_SERVERIP=y
++CONFIG_SERVERIP="192.168.8.20"
++CONFIG_SHOW_BOOT_PROGRESS=y
++CONFIG_CMD_MTD=y
++CONFIG_CMD_MTDPARTS=y
++CONFIG_MTDIDS_DEFAULT="nor0=ff800000.nor_flash0,nor1=c0000000.nor_flash1"
++CONFIG_MTDPARTS_DEFAULT="mtdparts=ff800000.nor_flash0:6m(unused),512k(uboot),256k(env),256k(dtb),1m(xianboot);c0000000.nor_flash1:4m(kernel),20m(rootfs)"
+diff --git a/include/configs/MPC837XERDB.h b/include/configs/MPC837XERDB.h
+index 3967cc2836..5c2ad58a8d 100644
+--- a/include/configs/MPC837XERDB.h
++++ b/include/configs/MPC837XERDB.h
+@@ -39,13 +39,13 @@
+ 
+ /* Vitesse 7385 */
+ 
+-#ifdef CONFIG_VSC7385_ENET
++// #ifdef CONFIG_VSC7385_ENET
+ 
+-/* The flash address and size of the VSC7385 firmware image */
+-#define CFG_VSC7385_IMAGE		0xFE7FE000
+-#define CFG_VSC7385_IMAGE_SIZE	8192
++// /* The flash address and size of the VSC7385 firmware image */
++// #define CFG_VSC7385_IMAGE		0xFE7FE000
++// #define CFG_VSC7385_IMAGE_SIZE	8192
+ 
+-#endif
++// #endif
+ 
+ /*
+  * DDR Setup
+@@ -95,11 +95,11 @@
+ 
+ #define CFG_SYS_DDR_INTERVAL	((1024 << SDRAM_INTERVAL_REFINT_SHIFT) \
+ 				| (0 << SDRAM_INTERVAL_BSTOPRE_SHIFT))
+-				/* 0x06090100 */
++				/* 0x04000000 */
+ 
+ #define CFG_SYS_DDR_SDRAM_CFG	(SDRAM_CFG_SREN \
+-					| SDRAM_CFG_SDRAM_TYPE_DDR2)
+-					/* 0x43000000 */
++					| SDRAM_CFG_SDRAM_TYPE_DDR2 | SDRAM_CFG_32_BE)
++					/* 0x43080000 */
+ #define CFG_SYS_DDR_SDRAM_CFG2	0x00001000 /* 1 posted refresh */
+ #define CFG_SYS_DDR_MODE		((0x0406 << SDRAM_MODE_ESD_SHIFT) \
+ 					| (0x0442 << SDRAM_MODE_SD_SHIFT))
+@@ -124,18 +124,17 @@
+ /*
+  * FLASH on the Local Bus
+  */
+-#define CFG_SYS_FLASH_BASE		0xFE000000 /* FLASH base address */
++#define CFG_SYS_FLASH_BASE		0xFF800000 /* FLASH base address */
+ #define CFG_SYS_FLASH_SIZE		8 /* max FLASH size is 32M */
+ 
+ /*
+  * NAND Flash on the Local Bus
+  */
+-#define CFG_SYS_NAND_BASE	0xE0600000
+-
++// #define CFG_SYS_NAND_BASE	0xC0000000
+ 
+ /* Vitesse 7385 */
+ 
+-#define CFG_SYS_VSC7385_BASE	0xF0000000
++// #define CFG_SYS_VSC7385_BASE	0xF0000000
+ 
+ /*
+  * Serial Port
+@@ -195,10 +194,17 @@
+  * Environment Configuration
+  */
+ 
+-#define FDTFILE			"mpc8379_rdb.dtb"
++#define FDTFILE			"mpc8378_rdb.dtb"
++#define CONFIG_DTB_BASE		0xFFEC0000
++#define CONFIG_KERNEL_BASE	0xC0000000
++#define CONFIG_ROOTFS_BASE	0xC0400000
+ 
+ #define CFG_EXTRA_ENV_SETTINGS \
+-	"netdev=eth1\0"				\
++	"nfsboot=setenv bootargs console=ttyS0,115200 root=/dev/nfs "\
++		"nfsroot=$serverip:/nfsroot/vmc1,nfsvers=3 init=/linuxrc rw ip=$ipaddr:$serverip::255.255.255.0::eth0:off;tftp $loadaddr $bootfile;bootm $loadaddr - " __stringify(CONFIG_DTB_BASE)	"\0"\
++	"flashboot=bootm "__stringify(CONFIG_KERNEL_BASE) " " __stringify(CONFIG_ROOTFS_BASE) " " __stringify(CONFIG_DTB_BASE)"\0"\
++	"netdev=eth0\0"				\
++	"fdtfile=" FDTFILE "\0"				\
+ 	"uboot=" CONFIG_UBOOTPATH "\0"					\
+ 	"tftpflash=tftp $loadaddr $uboot;"				\
+ 		"protect off " __stringify(CONFIG_TEXT_BASE)	\
+@@ -211,9 +217,39 @@
+ 			" +$filesize; "	\
+ 		"cmp.b $loadaddr " __stringify(CONFIG_TEXT_BASE)	\
+ 			" $filesize\0"	\
+-	"fdtaddr=780000\0"						\
+-	"fdtfile=" FDTFILE "\0"					\
+-	"ramdiskaddr=1000000\0"						\
++	"tftpdtb=tftp $loadaddr $fdtfile;"				\
++		"protect off " __stringify(CONFIG_DTB_BASE)	\
++			" +$filesize; "	\
++		"erase " __stringify(CONFIG_DTB_BASE)		\
++			" +$filesize; "	\
++		"cp.b $loadaddr " __stringify(CONFIG_DTB_BASE)	\
++			" $filesize; "	\
++		"protect on " __stringify(CONFIG_DTB_BASE)		\
++			" +$filesize; "	\
++		"cmp.b $loadaddr " __stringify(CONFIG_DTB_BASE)	\
++			" $filesize\0"	\
++	"tftpkernel=tftp $loadaddr $bootfile;"				\
++		"protect off " __stringify(CONFIG_KERNEL_BASE)	\
++			" +$filesize; "	\
++		"erase " __stringify(CONFIG_KERNEL_BASE)		\
++			" +$filesize; "	\
++		"cp.b $loadaddr " __stringify(CONFIG_KERNEL_BASE)	\
++			" $filesize; "	\
++		"protect on " __stringify(CONFIG_KERNEL_BASE)		\
++			" +$filesize; "	\
++		"cmp.b $loadaddr " __stringify(CONFIG_KERNEL_BASE)	\
++			" $filesize\0"	\
++	"tftprootfs=tftp $loadaddr $ramdiskfile;"				\
++		"protect off " __stringify(CONFIG_ROOTFS_BASE)	\
++			" +$filesize; "	\
++		"erase " __stringify(CONFIG_ROOTFS_BASE)		\
++			" +$filesize; "	\
++		"cp.b $loadaddr " __stringify(CONFIG_ROOTFS_BASE)	\
++			" $filesize; "	\
++		"protect on " __stringify(CONFIG_ROOTFS_BASE)		\
++			" +$filesize; "	\
++		"cmp.b $loadaddr " __stringify(CONFIG_ROOTFS_BASE)	\
++			" $filesize\0"	\
+ 	"ramdiskfile=rootfs.ext2.gz.uboot\0"				\
+ 	"console=ttyS0\0"						\
+ 	"setbootargs=setenv bootargs "					\

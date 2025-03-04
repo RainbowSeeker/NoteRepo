@@ -1,0 +1,563 @@
+diff --git a/arch/powerpc/boot/dts/mpc8378_rdb.dts b/arch/powerpc/boot/dts/mpc8378_rdb.dts
+index bdcfe83a5..f660d4ed6 100644
+--- a/arch/powerpc/boot/dts/mpc8378_rdb.dts
++++ b/arch/powerpc/boot/dts/mpc8378_rdb.dts
+@@ -13,13 +13,7 @@ / {
+ 	#size-cells = <1>;
+ 
+ 	aliases {
+-		ethernet0 = &enet0;
+-		ethernet1 = &enet1;
+ 		serial0 = &serial0;
+-		serial1 = &serial1;
+-		pci0 = &pci0;
+-		pci1 = &pci1;
+-		pci2 = &pci2;
+ 	};
+ 
+ 	cpus {
+@@ -52,42 +46,48 @@ localbus@e0005000 {
+ 		interrupts = <77 0x8>;
+ 		interrupt-parent = <&ipic>;
+ 
+-		// CS0 and CS1 are swapped when
+-		// booting from nand, but the
+-		// addresses are the same.
+-		ranges = <0x0 0x0 0xfe000000 0x00800000
+-		          0x1 0x0 0xe0600000 0x00008000
+-		          0x2 0x0 0xf0000000 0x00020000
+-		          0x3 0x0 0xfa000000 0x00008000>;
++		ranges = <0x0 0x0 0xff800000 0x00800000
++		          0x1 0x0 0xc0000000 0x01800000
++		          0x2 0x0 0xc2000000 0x02000000>;
+ 
+-		flash@0,0 {
++		nor_flash0@0,0 {
+ 			#address-cells = <1>;
+ 			#size-cells = <1>;
+ 			compatible = "cfi-flash";
+ 			reg = <0x0 0x0 0x800000>;
+ 			bank-width = <2>;
+ 			device-width = <1>;
++
++			u-boot@600000 {
++				reg = <0x600000 0x80000>;
++				read-only;
++			};
+ 		};
+ 
+-		nand@1,0 {
++		nor_flash1@1,0 {
+ 			#address-cells = <1>;
+ 			#size-cells = <1>;
+-			compatible = "fsl,mpc8378-fcm-nand",
+-			             "fsl,elbc-fcm-nand";
+-			reg = <0x1 0x0 0x8000>;
+-
+-			u-boot@0 {
+-				reg = <0x0 0x100000>;
+-				read-only;
+-			};
++			compatible = "cfi-flash";
++			reg = <0x1 0x0 0x1800000>;
++			bank-width = <2>;
++			device-width = <1>;
+ 
+-			kernel@100000 {
+-				reg = <0x100000 0x300000>;
++			kernel@0 {
++				reg = <0x0 0x400000>;
+ 			};
+ 			fs@400000 {
+-				reg = <0x400000 0x1c00000>;
++				reg = <0x400000 0x1400000>;
+ 			};
+ 		};
++
++		fpga@2,0 {
++			#address-cells = <0x01>;
++			#size-cells = <0x01>;
++			compatible = "simple-bus";
++			reg = <0x02 0x00 0xc4000>;
++			bank-width = <0x04>;
++			device-width = <0x01>;
++		};
+ 	};
+ 
+ 	immr@e0000000 {
+@@ -105,96 +105,6 @@ wdt@200 {
+ 			reg = <0x200 0x100>;
+ 		};
+ 
+-		gpio1: gpio-controller@c00 {
+-			#gpio-cells = <2>;
+-			compatible = "fsl,mpc8378-gpio", "fsl,mpc8349-gpio";
+-			reg = <0xc00 0x100>;
+-			interrupts = <74 0x8>;
+-			interrupt-parent = <&ipic>;
+-			gpio-controller;
+-		};
+-
+-		gpio2: gpio-controller@d00 {
+-			#gpio-cells = <2>;
+-			compatible = "fsl,mpc8378-gpio", "fsl,mpc8349-gpio";
+-			reg = <0xd00 0x100>;
+-			interrupts = <75 0x8>;
+-			interrupt-parent = <&ipic>;
+-			gpio-controller;
+-		};
+-
+-		sleep-nexus {
+-			#address-cells = <1>;
+-			#size-cells = <1>;
+-			compatible = "simple-bus";
+-			sleep = <&pmc 0x0c000000>;
+-			ranges;
+-
+-			i2c@3000 {
+-				#address-cells = <1>;
+-				#size-cells = <0>;
+-				cell-index = <0>;
+-				compatible = "fsl-i2c";
+-				reg = <0x3000 0x100>;
+-				interrupts = <14 0x8>;
+-				interrupt-parent = <&ipic>;
+-				dfsrr;
+-
+-				dtt@48 {
+-					compatible = "national,lm75";
+-					reg = <0x48>;
+-				};
+-
+-				at24@50 {
+-					compatible = "atmel,24c256";
+-					reg = <0x50>;
+-				};
+-
+-				rtc@68 {
+-					compatible = "dallas,ds1339";
+-					reg = <0x68>;
+-				};
+-
+-				mcu_pio: mcu@a {
+-					#gpio-cells = <2>;
+-					compatible = "fsl,mc9s08qg8-mpc8378erdb",
+-						     "fsl,mcu-mpc8349emitx";
+-					reg = <0x0a>;
+-					gpio-controller;
+-				};
+-			};
+-
+-			sdhci@2e000 {
+-				compatible = "fsl,mpc8378-esdhc", "fsl,esdhc";
+-				reg = <0x2e000 0x1000>;
+-				interrupts = <42 0x8>;
+-				interrupt-parent = <&ipic>;
+-				sdhci,wp-inverted;
+-				/* Filled in by U-Boot */
+-				clock-frequency = <111111111>;
+-			};
+-		};
+-
+-		i2c@3100 {
+-			#address-cells = <1>;
+-			#size-cells = <0>;
+-			cell-index = <1>;
+-			compatible = "fsl-i2c";
+-			reg = <0x3100 0x100>;
+-			interrupts = <15 0x8>;
+-			interrupt-parent = <&ipic>;
+-			dfsrr;
+-		};
+-
+-		spi@7000 {
+-			cell-index = <0>;
+-			compatible = "fsl,spi";
+-			reg = <0x7000 0x1000>;
+-			interrupts = <16 0x8>;
+-			interrupt-parent = <&ipic>;
+-			mode = "cpu";
+-		};
+-
+ 		dma@82a8 {
+ 			#address-cells = <1>;
+ 			#size-cells = <1>;
+@@ -234,17 +144,6 @@ dma-channel@180 {
+ 			};
+ 		};
+ 
+-		usb@23000 {
+-			compatible = "fsl-usb2-dr";
+-			reg = <0x23000 0x1000>;
+-			#address-cells = <1>;
+-			#size-cells = <0>;
+-			interrupt-parent = <&ipic>;
+-			interrupts = <38 0x8>;
+-			phy_type = "ulpi";
+-			sleep = <&pmc 0x00c00000>;
+-		};
+-
+ 		enet0: ethernet@24000 {
+ 			#address-cells = <1>;
+ 			#size-cells = <1>;
+@@ -259,7 +158,7 @@ enet0: ethernet@24000 {
+ 			phy-connection-type = "mii";
+ 			interrupt-parent = <&ipic>;
+ 			tbi-handle = <&tbi0>;
+-			phy-handle = <&phy2>;
++			phy-handle = <&phy0>;
+ 			sleep = <&pmc 0xc0000000>;
+ 			fsl,magic-packet;
+ 
+@@ -269,49 +168,17 @@ mdio@520 {
+ 				compatible = "fsl,gianfar-mdio";
+ 				reg = <0x520 0x20>;
+ 
+-				phy2: ethernet-phy@2 {
+-					interrupt-parent = <&ipic>;
+-					interrupts = <17 0x8>;
+-					reg = <0x2>;
++				phy0: ethernet-phy@0 {
++					reg = <0x0>;
+ 				};
+ 
+-				tbi0: tbi-phy@11 {
+-					reg = <0x11>;
++				tbi0: tbi-phy@10 {
++					reg = <0x10>;
+ 					device_type = "tbi-phy";
+ 				};
+ 			};
+ 		};
+ 
+-		enet1: ethernet@25000 {
+-			#address-cells = <1>;
+-			#size-cells = <1>;
+-			cell-index = <1>;
+-			device_type = "network";
+-			model = "eTSEC";
+-			compatible = "gianfar";
+-			reg = <0x25000 0x1000>;
+-			ranges = <0x0 0x25000 0x1000>;
+-			local-mac-address = [ 00 00 00 00 00 00 ];
+-			interrupts = <35 0x8 36 0x8 37 0x8>;
+-			phy-connection-type = "mii";
+-			interrupt-parent = <&ipic>;
+-			fixed-link = <1 1 1000 0 0>;
+-			tbi-handle = <&tbi1>;
+-			sleep = <&pmc 0x30000000>;
+-			fsl,magic-packet;
+-
+-			mdio@520 {
+-				#address-cells = <1>;
+-				#size-cells = <0>;
+-				compatible = "fsl,gianfar-tbi";
+-				reg = <0x520 0x20>;
+-
+-				tbi1: tbi-phy@11 {
+-					reg = <0x11>;
+-					device_type = "tbi-phy";
+-				};
+-			};
+-		};
+ 
+ 		serial0: serial@4500 {
+ 			cell-index = <0>;
+@@ -323,16 +190,6 @@ serial0: serial@4500 {
+ 			interrupt-parent = <&ipic>;
+ 		};
+ 
+-		serial1: serial@4600 {
+-			cell-index = <1>;
+-			device_type = "serial";
+-			compatible = "fsl,ns16550", "ns16550";
+-			reg = <0x4600 0x100>;
+-			clock-frequency = <0>;
+-			interrupts = <10 0x8>;
+-			interrupt-parent = <&ipic>;
+-		};
+-
+ 		crypto@30000 {
+ 			compatible = "fsl,sec3.0", "fsl,sec2.4", "fsl,sec2.2",
+ 				     "fsl,sec2.1", "fsl,sec2.0";
+@@ -367,116 +224,4 @@ pmc: power@b00 {
+ 			interrupt-parent = <&ipic>;
+ 		};
+ 	};
+-
+-	pci0: pci@e0008500 {
+-		interrupt-map-mask = <0xf800 0 0 7>;
+-		interrupt-map = <
+-				/* IRQ5 = 21 = 0x15, IRQ6 = 0x16, IRQ7 = 23 = 0x17 */
+-
+-				/* IDSEL AD14 IRQ6 inta */
+-				 0x7000 0x0 0x0 0x1 &ipic 22 0x8
+-
+-				/* IDSEL AD15 IRQ5 inta, IRQ6 intb, IRQ7 intd */
+-				 0x7800 0x0 0x0 0x1 &ipic 21 0x8
+-				 0x7800 0x0 0x0 0x2 &ipic 22 0x8
+-				 0x7800 0x0 0x0 0x4 &ipic 23 0x8
+-
+-				/* IDSEL AD28 IRQ7 inta, IRQ5 intb IRQ6 intc*/
+-				 0xE000 0x0 0x0 0x1 &ipic 23 0x8
+-				 0xE000 0x0 0x0 0x2 &ipic 21 0x8
+-				 0xE000 0x0 0x0 0x3 &ipic 22 0x8>;
+-		interrupt-parent = <&ipic>;
+-		interrupts = <66 0x8>;
+-		bus-range = <0 0>;
+-		ranges = <0x02000000 0x0 0x90000000 0x90000000 0x0 0x10000000
+-		          0x42000000 0x0 0x80000000 0x80000000 0x0 0x10000000
+-		          0x01000000 0x0 0x00000000 0xe0300000 0x0 0x00100000>;
+-		sleep = <&pmc 0x00010000>;
+-		clock-frequency = <66666666>;
+-		#interrupt-cells = <1>;
+-		#size-cells = <2>;
+-		#address-cells = <3>;
+-		reg = <0xe0008500 0x100		/* internal registers */
+-		       0xe0008300 0x8>;		/* config space access registers */
+-		compatible = "fsl,mpc8349-pci";
+-		device_type = "pci";
+-	};
+-
+-	pci1: pcie@e0009000 {
+-		#address-cells = <3>;
+-		#size-cells = <2>;
+-		#interrupt-cells = <1>;
+-		device_type = "pci";
+-		compatible = "fsl,mpc8378-pcie", "fsl,mpc8314-pcie";
+-		reg = <0xe0009000 0x00001000>;
+-		ranges = <0x02000000 0 0xa8000000 0xa8000000 0 0x10000000
+-		          0x01000000 0 0x00000000 0xb8000000 0 0x00800000>;
+-		bus-range = <0 255>;
+-		interrupt-map-mask = <0xf800 0 0 7>;
+-		interrupt-map = <0 0 0 1 &ipic 1 8
+-				 0 0 0 2 &ipic 1 8
+-				 0 0 0 3 &ipic 1 8
+-				 0 0 0 4 &ipic 1 8>;
+-		sleep = <&pmc 0x00300000>;
+-		clock-frequency = <0>;
+-
+-		pcie@0 {
+-			#address-cells = <3>;
+-			#size-cells = <2>;
+-			device_type = "pci";
+-			reg = <0 0 0 0 0>;
+-			ranges = <0x02000000 0 0xa8000000
+-				  0x02000000 0 0xa8000000
+-				  0 0x10000000
+-				  0x01000000 0 0x00000000
+-				  0x01000000 0 0x00000000
+-				  0 0x00800000>;
+-		};
+-	};
+-
+-	pci2: pcie@e000a000 {
+-		#address-cells = <3>;
+-		#size-cells = <2>;
+-		#interrupt-cells = <1>;
+-		device_type = "pci";
+-		compatible = "fsl,mpc8378-pcie", "fsl,mpc8314-pcie";
+-		reg = <0xe000a000 0x00001000>;
+-		ranges = <0x02000000 0 0xc8000000 0xc8000000 0 0x10000000
+-			  0x01000000 0 0x00000000 0xd8000000 0 0x00800000>;
+-		bus-range = <0 255>;
+-		interrupt-map-mask = <0xf800 0 0 7>;
+-		interrupt-map = <0 0 0 1 &ipic 2 8
+-				 0 0 0 2 &ipic 2 8
+-				 0 0 0 3 &ipic 2 8
+-				 0 0 0 4 &ipic 2 8>;
+-		sleep = <&pmc 0x000c0000>;
+-		clock-frequency = <0>;
+-
+-		pcie@0 {
+-			#address-cells = <3>;
+-			#size-cells = <2>;
+-			device_type = "pci";
+-			reg = <0 0 0 0 0>;
+-			ranges = <0x02000000 0 0xc8000000
+-				  0x02000000 0 0xc8000000
+-				  0 0x10000000
+-				  0x01000000 0 0x00000000
+-				  0x01000000 0 0x00000000
+-				  0 0x00800000>;
+-		};
+-	};
+-
+-	leds {
+-		compatible = "gpio-leds";
+-
+-		pwr {
+-			gpios = <&mcu_pio 0 0>;
+-			default-state = "on";
+-		};
+-
+-		hdd {
+-			gpios = <&mcu_pio 1 0>;
+-			linux,default-trigger = "disk-activity";
+-		};
+-	};
+ };
+diff --git a/arch/powerpc/configs/83xx/mpc837x_rdb_defconfig b/arch/powerpc/configs/83xx/mpc837x_rdb_defconfig
+index cbcae2a92..905347022 100644
+--- a/arch/powerpc/configs/83xx/mpc837x_rdb_defconfig
++++ b/arch/powerpc/configs/83xx/mpc837x_rdb_defconfig
+@@ -11,8 +11,8 @@ CONFIG_PARTITION_ADVANCED=y
+ # CONFIG_PPC_PMAC is not set
+ CONFIG_PPC_83xx=y
+ CONFIG_MPC837x_RDB=y
+-CONFIG_GEN_RTC=y
+-CONFIG_PCI=y
++# CONFIG_GEN_RTC=y
++# CONFIG_PCI=y
+ CONFIG_NET=y
+ CONFIG_PACKET=y
+ CONFIG_UNIX=y
+@@ -27,18 +27,18 @@ CONFIG_SYN_COOKIES=y
+ CONFIG_BLK_DEV_LOOP=y
+ CONFIG_BLK_DEV_RAM=y
+ CONFIG_BLK_DEV_RAM_SIZE=32768
+-CONFIG_BLK_DEV_SD=y
+-CONFIG_CHR_DEV_SG=y
+-CONFIG_ATA=y
+-CONFIG_SATA_FSL=y
+-CONFIG_MD=y
+-CONFIG_BLK_DEV_MD=y
+-CONFIG_MD_RAID1=y
+-CONFIG_MD_RAID456=y
++# CONFIG_BLK_DEV_SD=y
++# CONFIG_CHR_DEV_SG=y
++# CONFIG_ATA=y
++# CONFIG_SATA_FSL=y
++# CONFIG_MD=y
++# CONFIG_BLK_DEV_MD=y
++# CONFIG_MD_RAID1=y
++# CONFIG_MD_RAID456=y
+ CONFIG_NETDEVICES=y
+ CONFIG_GIANFAR=y
+ CONFIG_MARVELL_PHY=y
+-CONFIG_INPUT_FF_MEMLESS=m
++# CONFIG_INPUT_FF_MEMLESS=m
+ # CONFIG_INPUT_KEYBOARD is not set
+ # CONFIG_INPUT_MOUSE is not set
+ # CONFIG_SERIO is not set
+@@ -46,29 +46,29 @@ CONFIG_INPUT_FF_MEMLESS=m
+ CONFIG_SERIAL_8250=y
+ CONFIG_SERIAL_8250_CONSOLE=y
+ # CONFIG_HW_RANDOM is not set
+-CONFIG_I2C=y
+-CONFIG_I2C_CHARDEV=y
+-CONFIG_I2C_MPC=y
+-CONFIG_WATCHDOG=y
+-CONFIG_HID_A4TECH=y
+-CONFIG_HID_APPLE=y
+-CONFIG_HID_BELKIN=y
+-CONFIG_HID_CHERRY=y
+-CONFIG_HID_CHICONY=y
+-CONFIG_HID_CYPRESS=y
+-CONFIG_HID_EZKEY=y
+-CONFIG_HID_GYRATION=y
+-CONFIG_HID_LOGITECH=y
+-CONFIG_HID_MICROSOFT=y
+-CONFIG_HID_MONTEREY=y
+-CONFIG_HID_PANTHERLORD=y
+-CONFIG_HID_PETALYNX=y
+-CONFIG_HID_SAMSUNG=y
+-CONFIG_HID_SUNPLUS=y
+-CONFIG_USB=y
+-CONFIG_USB_MON=y
+-CONFIG_USB_EHCI_HCD=y
+-CONFIG_USB_EHCI_FSL=y
++# CONFIG_I2C=y
++# CONFIG_I2C_CHARDEV=y
++# CONFIG_I2C_MPC=y
++# CONFIG_WATCHDOG=y
++# CONFIG_HID_A4TECH=y
++# CONFIG_HID_APPLE=y
++# CONFIG_HID_BELKIN=y
++# CONFIG_HID_CHERRY=y
++# CONFIG_HID_CHICONY=y
++# CONFIG_HID_CYPRESS=y
++# CONFIG_HID_EZKEY=y
++# CONFIG_HID_GYRATION=y
++# CONFIG_HID_LOGITECH=y
++# CONFIG_HID_MICROSOFT=y
++# CONFIG_HID_MONTEREY=y
++# CONFIG_HID_PANTHERLORD=y
++# CONFIG_HID_PETALYNX=y
++# CONFIG_HID_SAMSUNG=y
++# CONFIG_HID_SUNPLUS=y
++# CONFIG_USB=y
++# CONFIG_USB_MON=y
++# CONFIG_USB_EHCI_HCD=y
++# CONFIG_USB_EHCI_FSL=y
+ CONFIG_EXT2_FS=y
+ CONFIG_EXT4_FS=y
+ CONFIG_PROC_KCORE=y
+@@ -80,3 +80,17 @@ CONFIG_CRC_T10DIF=y
+ # CONFIG_ENABLE_MUST_CHECK is not set
+ CONFIG_CRYPTO_ECB=m
+ CONFIG_CRYPTO_PCBC=m
++CONFIG_HIGH_RES_TIMERS=y
++CONFIG_PREEMPT_RT=y
++CONFIG_HZ_1000=y
++CONFIG_CMDLINE_PARTITION=y
++CONFIG_USB_SUPPORT=n
++CONFIG_HWMON=n
++# CONFIG_MTD=y
++# CONFIG_MTD_CMDLINE_PARTS=y
++# CONFIG_MTD_CFI=y
++# CONFIG_MTD_CFI_AMDSTD=y
++CONFIG_DEVTMPFS=y
++CONFIG_DEVTMPFS_MOUNT=y
++CONFIG_PRINTK_TIME=y
++CONFIG_VMC_DRIVER=y
+\ No newline at end of file
+diff --git a/arch/powerpc/platforms/83xx/misc.c b/arch/powerpc/platforms/83xx/misc.c
+index a952e91db..073163aaf 100644
+--- a/arch/powerpc/platforms/83xx/misc.c
++++ b/arch/powerpc/platforms/83xx/misc.c
+@@ -26,7 +26,7 @@ static __be32 __iomem *restart_reg_base;
+ static int __init mpc83xx_restart_init(void)
+ {
+ 	/* map reset restart_reg_baseister space */
+-	restart_reg_base = ioremap(get_immrbase() + 0x900, 0xff);
++	restart_reg_base = ioremap(0xC20C313C, 0x4);
+ 
+ 	return 0;
+ }
+@@ -42,11 +42,11 @@ void __noreturn mpc83xx_restart(char *cmd)
+ 	local_irq_disable();
+ 
+ 	if (restart_reg_base) {
+-		/* enable software reset "RSTE" */
+-		out_be32(restart_reg_base + (RST_PROT_REG >> 2), 0x52535445);
++		// /* enable software reset "RSTE" */
++		// out_be32(restart_reg_base + (RST_PROT_REG >> 2), 0x52535445);
+ 
+ 		/* set software hard reset */
+-		out_be32(restart_reg_base + (RST_CTRL_REG >> 2), 0x2);
++		out_be32(restart_reg_base, 0x1);
+ 	} else {
+ 		printk (KERN_EMERG "Error: Restart registers not mapped, spinning!\n");
+ 	}
+diff --git a/drivers/Kconfig b/drivers/Kconfig
+index dcecc9f6e..fa928f82b 100644
+--- a/drivers/Kconfig
++++ b/drivers/Kconfig
+@@ -235,4 +235,6 @@ source "drivers/interconnect/Kconfig"
+ source "drivers/counter/Kconfig"
+ 
+ source "drivers/most/Kconfig"
++
++source "drivers/vmc/Kconfig"
+ endmenu
+diff --git a/drivers/Makefile b/drivers/Makefile
+index 576228037..351d885a8 100644
+--- a/drivers/Makefile
++++ b/drivers/Makefile
+@@ -189,3 +189,4 @@ obj-$(CONFIG_GNSS)		+= gnss/
+ obj-$(CONFIG_INTERCONNECT)	+= interconnect/
+ obj-$(CONFIG_COUNTER)		+= counter/
+ obj-$(CONFIG_MOST)		+= most/
++obj-$(CONFIG_VMC_DRIVER)	+= vmc/
+\ No newline at end of file
