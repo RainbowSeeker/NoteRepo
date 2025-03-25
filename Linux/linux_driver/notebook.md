@@ -104,5 +104,64 @@ struct page {
 ```
 PFN（Page Frame Number，页帧号）：是一个整数，表示物理页在物理内存中的序号，等于物理地址除以页大小。
 > 转换：pfn_to_page() / page_to_pfn() / page_address()
+>
+> pmap：查看程序内存分布
 
-pmap
+### 5. 中断
+- **上半部**：运行在硬件中断上下文中，需要快速执行，通常只记录状态或触发下半部。不能睡眠，不能调用可能阻塞的函数（如 copy_to_user/mutex_lock等）。
+- **下半部**：运行在软中断或进程上下文中，可以处理耗时任务/睡眠。
+#### softirq
+softirq（软中断）是 Linux 内核中实现 ​下半部 的一种机制，适合处理高频率、低延迟的任务。
+- **高优先级**：softirq 的优先级高于普通进程，但低于硬件中断。
+- **​不能睡眠**：softirq 运行在软中断上下文中，**`不能调用可能导致睡眠的函数`**。
+- **​静态分配**：softirq 的数量是固定的（Linux 内核预定义了 10 个 softirq）。
+```c
+enum
+{
+    HI_SOFTIRQ=0,       // 高优先级 tasklet
+    TIMER_SOFTIRQ,      // 定时器
+    NET_TX_SOFTIRQ,     // 网络发送
+    NET_RX_SOFTIRQ,     // 网络接收
+    BLOCK_SOFTIRQ,      // 块设备
+    IRQ_POLL_SOFTIRQ,   // IRQ 轮询
+    TASKLET_SOFTIRQ,    // 普通 tasklet
+    SCHED_SOFTIRQ,      // 调度器
+    HRTIMER_SOFTIRQ,    // 高精度定时器
+    RCU_SOFTIRQ,        // RCU 回调
+    NR_SOFTIRQS         // Softirq 总数
+};
+```
+> softirq 用户不可用，只能调用 tasklet/workqueue 等类似的接口。
+#### tasklet
+tasklet 属于 softirq，适用于处理硬件中断触发的快速任务。
+- **`不可睡眠`**，**`​原子性`**，**`不可重入`**，**`避免长时间运行`**
+
+#### workqueue
+运行在 **进程上下文**，由内核线程（如 kworker）执行，​适用于处理耗时任务。
+- **`可睡眠`**，**`​高延迟`**，**`并发性`**
+
+### 6. GPIO
+```c
+// register a pin controller device
+struct pinctrl_dev *devm_pinctrl_register(struct device *dev,
+					  struct pinctrl_desc *pctldesc,
+					  void *driver_data);
+// register a gpiochip with userdata
+#define gpiochip_add_data(gc, data)
+```
+```dts
+// register a `gpio-leds` device
+gpioleds {
+    compatible = "gpio-leds";
+    status = "okay";
+
+    red_led {
+        label = "red_led";
+        gpios = <&gpio_expander 5 GPIO_ACTIVE_HIGH>;
+        default-state ="off";
+        linux,default-trigger="none";
+    };
+};
+```
+gpio nr 编号由具体平台设备驱动实现，计算公式为 `nr = gpiochip->base + offset`。其中 `gpiochip->base` 为 gpio 的 chip 控制器基址(不同于实际硬件地址，只是内核分配给 gpiochip 的一个编号)，`offset`为具体 pin 在 chip 的偏移(\in [0, ngpio-1])。
+> 当 gpiochip->base 指定为 -1 时， gpiochip_add_data 会自动计算基址，即为 ARCH_NR_GPIOS 开始向前占据 ngpio 个编号。

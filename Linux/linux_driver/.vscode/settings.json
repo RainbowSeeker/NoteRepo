@@ -29,6 +29,13 @@
         "initializer_list": "c",
         "utility": "c",
         "memory.h": "c",
-        "cacheflush.h": "c"
+        "cacheflush.h": "c",
+        "workqueue.h": "c",
+        "interrupt.h": "c",
+        "meson-g12a-gpio.h": "c",
+        "of_gpio.h": "c",
+        "platform_device.h": "c",
+        "of.h": "c",
+        "of_platform.h": "c"
     }
 }

@@ -26,16 +26,44 @@ int main()
         return -1;
     }
     printf("mmap: %s\n", map_buf);
-
+    
+    /*-------------- TEST read ----------------------------------------------*/
     char buf[MMAP_SIZE];
     for (int i = 0; i < MMAP_SIZE; i++)
     {
         buf[i] = rand() % 26 + 'a';
-        if (i < 512) write(fd, buf + i, 1);
-        else map_buf[i] = buf[i];
+    }
+    int ret = write(fd, buf, sizeof(buf));
+    if (ret < 0 || ret != sizeof(buf))
+    {
+        perror("write");
+        return -1;
     }
 
     // check
+    printf("TEST write: ");
+    if (memcmp(buf, map_buf, MMAP_SIZE) == 0)
+        printf("buf and map_buf are the same\n");
+    else
+        printf("buf and map_buf are different\n");
+
+    /*-------------- TEST read ----------------------------------------------*/
+    for (int i = 0; i < MMAP_SIZE; i++)
+    {
+        map_buf[i] = rand() % 26 + 'a';
+    }
+
+    // from beginning
+    lseek(fd, 0, SEEK_SET);
+    ret = read(fd, buf, sizeof(buf));
+    if (ret < 0 || ret != sizeof(buf))
+    {
+        perror("read");
+        return -1;
+    }
+
+    // check
+    printf("TEST read: ");
     if (memcmp(buf, map_buf, MMAP_SIZE) == 0)
         printf("buf and map_buf are the same\n");
     else
