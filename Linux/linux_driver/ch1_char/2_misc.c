@@ -82,7 +82,7 @@ static int misc_mmap(struct file *file, struct vm_area_struct *vma)
     }
     
     // !!! 不能配合 kmalloc 申请的内存使用, 因为 kmalloc 申请的内存默认是 WB 的, 这样做会引发 Bus error. !!!
-    // vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);    
+    // vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
     // vma->vm_page_prot = pgprot_writecombine(vma->vm_page_prot);
 
     if (remap_pfn_range(vma, vma->vm_start, pfn, size, vma->vm_page_prot))

@@ -151,17 +151,37 @@ struct pinctrl_dev *devm_pinctrl_register(struct device *dev,
 ```
 ```dts
 // register a `gpio-leds` device
-gpioleds {
-    compatible = "gpio-leds";
+leds: leds {
     status = "okay";
+    compatible = "gpio-leds";
 
-    red_led {
-        label = "red_led";
-        gpios = <&gpio_expander 5 GPIO_ACTIVE_HIGH>;
-        default-state ="off";
-        linux,default-trigger="none";
+    sys_led: sys-led {
+        label = "sys_led";
+        linux,default-trigger = "heartbeat";
+        default-state = "on";
+        gpios = <&gpio4 RK_PB5 GPIO_ACTIVE_LOW>;
+        pinctrl-names = "default";
+        pinctrl-0 = <&sys_status_led_pin>;
     };
 };
+// cat /sys/class/gpio/gpiochipxxx/label
 ```
-gpio nr 编号由具体平台设备驱动实现，计算公式为 `nr = gpiochip->base + offset`。其中 `gpiochip->base` 为 gpio 的 chip 控制器基址(不同于实际硬件地址，只是内核分配给 gpiochip 的一个编号)，`offset`为具体 pin 在 chip 的偏移(\in [0, ngpio-1])。
+gpio nr 编号由具体平台设备驱动实现，计算公式为 `nr = gpiochip->base + offset`。其中 `gpiochip->base` 为 gpio 的 chip 控制器基址（不同于实际硬件地址，只是内核分配给 gpiochip 的一个编号），`offset`为具体 pin 在 chip 的偏移（\in [0, ngpio-1]）。
 > 当 gpiochip->base 指定为 -1 时， gpiochip_add_data 会自动计算基址，即为 ARCH_NR_GPIOS 开始向前占据 ngpio 个编号。
+
+WorkFlow:
+```c
+pdata->cdev && devm_led_classdev_register_ext
+```
+
+### 7. Input
+用于监听和上报来自硬件的输入信号，如键盘\鼠标等。WorkFlow: 
+```c
+devm_input_allocate_device 
+    -> set_bit && input_register_device 
+        -> input_report_key && input_sync(in isr) 
+            -> input_unregister_device
+```
+See [input.c](ch2_platform/2_input.c)。
+- `devm_*` 开头的函数用于在设备remove时自动释放自身资源（RAII 思想）。
+- `delayed_work` or `timer` 用于按键消抖。

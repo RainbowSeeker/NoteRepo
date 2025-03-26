@@ -4,10 +4,10 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/../khadas/fenix/build/linux/include/**",
-                "${workspaceFolder}/../khadas/fenix/build/linux/arch/arm64/include/**",
-                "${workspaceFolder}/../khadas/fenix/build/linux/arch/arm64/include/generated/**",
-                "${workspaceFolder}/../khadas/fenix/build/linux/fs/**"
+                "${workspaceFolder}/../lubancat/kernel/include/**",
+                "${workspaceFolder}/../lubancat/kernel/arch/arm64/include/**",
+                "${workspaceFolder}/../lubancat/kernel/arch/arm64/include/generated/**",
+                "${workspaceFolder}/../lubancat/kernel/fs/**"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/clang",

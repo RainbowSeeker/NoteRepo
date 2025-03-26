@@ -36,6 +36,20 @@
         "of_gpio.h": "c",
         "platform_device.h": "c",
         "of.h": "c",
-        "of_platform.h": "c"
+        "of_platform.h": "c",
+        "rockchip.h": "c",
+        "string": "cpp",
+        "of_device.h": "c",
+        "input.h": "c",
+        "typeindex": "c",
+        "typeinfo": "c",
+        "future": "c",
+        "system_error": "c",
+        "optional": "c",
+        "functional": "c",
+        "tuple": "c",
+        "type_traits": "c",
+        "variant": "c",
+        "of_irq.h": "c"
     }
 }

@@ -1,0 +1,46 @@
+
+/dts-v1/;
+
+#include "dt-bindings/pinctrl/rockchip.h"
+#include "dt-bindings/gpio/gpio.h"
+#include "dt-bindings/input/input.h"
+#include "dt-bindings/interrupt-controller/irq.h"
+#include "rk3588s.dtsi"
+
+/ {
+    myled {
+        compatible = "myled";
+        label = "myled_test0";
+        default-state = "on";
+        gpios = <&gpio3 RK_PC0 GPIO_ACTIVE_LOW>;
+        linux,default-trigger = "heartbeat";
+        pinctrl-names = "default";
+        pinctrl-0 = <&myled0>;
+    };
+
+    mybutton0 {
+        compatible = "mybutton";
+        label = "mybutton_test0";
+        gpios = <&gpio3 RK_PD5 GPIO_ACTIVE_LOW>;
+        linux,code = <KEY_ENTER>;
+        debounce-interval = <10>;
+        pinctrl-names = "default";
+        pinctrl-0 = <&mybutton0>;
+        interrupt-parent = <&gpio3>;
+        interrupts = <RK_PD5 IRQ_TYPE_EDGE_FALLING>;
+    };
+};
+
+&pinctrl {
+    myled {
+        myled0: myled0 {
+            rockchip,pins = <3 RK_PC0 RK_FUNC_GPIO &pcfg_pull_none>;
+        };
+    };
+
+    mybutton {
+        mybutton0: mybutton0 {
+            rockchip,pins = <3 RK_PD5 RK_FUNC_GPIO &pcfg_pull_up>;
+        };
+    };
+};

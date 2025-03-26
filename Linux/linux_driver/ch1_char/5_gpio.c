@@ -5,31 +5,28 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 
-#include <../common_drivers/include/dt-bindings/gpio/meson-g12a-gpio.h>
+#include <dt-bindings/pinctrl/rockchip.h>
 
-#define CHIPA_BASE      (410)
-#define GPIO_ID         (CHIPA_BASE + GPIOH_4)
+#define CHIP_BASE       (96)   // RK3288s gpio3
+#define GPIO_ID         (CHIP_BASE + RK_PC0)
+
+#define GPIO_DIRECTION  0   // 0: output, 1: input
 /*
-gpioleds {
-		compatible = "gpio-leds";
-		status = "okay";
+leds: leds {
+    status = "okay";
+    compatible = "gpio-leds";
 
-		sys_led {
-			label="sys_led";
-			gpios=<&gpio_ao GPIOAO_4 GPIO_ACTIVE_HIGH>;
-			default-state ="on";
-			retain-state-suspended;
-			linux,default-trigger="default-on";
-		};
-
-		red_led {
-			label = "red_led";
-			gpios = <&gpio_expander 5 GPIO_ACTIVE_HIGH>;
-			default-state ="off";
-			linux,default-trigger="none";
-		};
-	};
+    sys_led: sys-led {
+        label = "sys_led";
+        linux,default-trigger = "heartbeat";
+        default-state = "on";
+        gpios = <&gpio4 RK_PB5 GPIO_ACTIVE_LOW>;
+        pinctrl-names = "default";
+        pinctrl-0 = <&sys_status_led_pin>;
+    };
+};
 */
+#if GPIO_DIRECTION == 1
 static irqreturn_t my_gpio_irq(int irq, void *dev_id)
 {
     int val = gpio_get_value(GPIO_ID);
@@ -37,6 +34,7 @@ static irqreturn_t my_gpio_irq(int irq, void *dev_id)
 
     return IRQ_HANDLED;
 }
+#endif
 
 
 static int __init gpio_init(void)
@@ -48,7 +46,7 @@ static int __init gpio_init(void)
         goto fail_find_gpio;
     }
 
-#if 0
+#if GPIO_DIRECTION == 0
     ret = gpio_direction_output(GPIO_ID, 1);
     if (ret)
     {
@@ -72,7 +70,7 @@ static int __init gpio_init(void)
         goto fail_direction;
     }
 
-    ret = request_irq(irq, my_gpio_irq, IRQF_TRIGGER_FALLING, "my_irq", NULL);
+    ret = request_irq(irq, my_gpio_irq, IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING, "my_irq", NULL);
     if (ret)
     {
         pr_err("request_irq failed\n");
@@ -80,6 +78,8 @@ static int __init gpio_init(void)
     }
 
 #endif
+
+    printk("gpio init success\n");
 
     return 0;
 
@@ -91,7 +91,11 @@ fail_find_gpio:
 
 static void __exit gpio_exit(void)
 {
+#if GPIO_DIRECTION == 0
+    gpio_set_value(GPIO_ID, 0);
+#else
     free_irq(gpio_to_irq(GPIO_ID), NULL);
+#endif
 
     gpio_free(GPIO_ID);
 }
