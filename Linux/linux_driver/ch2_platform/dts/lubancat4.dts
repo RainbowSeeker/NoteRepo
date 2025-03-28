@@ -44,3 +44,35 @@
         };
     };
 };
+
+&i2c5 {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <0x310>;
+    
+    ssd1306: oled@3c {
+        compatible = "oled,ssd1306-i2c";
+        reg = <0x3c>;
+        solomon,height = <64>;
+        solomon,width = <128>;
+        solomon,page-offset = <0>;
+        solomon,com-lrremap;
+        solomon,com-invdir;
+        solomon,com-offset = <0>;
+    };
+};
+
+&spi0 {
+    status = "okay";
+    pinctrl-names = "default";
+    pinctrl-0 = <0x38f 0x38e>;
+    num-cs = <0x01>;
+    
+    w25q64: flash@0 {
+        status = "okay";
+        compatible = "winbond,w25q64-spi";
+        // compatible = "jedec,spi-nor";
+        reg = <0>;
+        spi-max-frequency = <80000000>;
+    };
+};

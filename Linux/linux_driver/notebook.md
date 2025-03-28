@@ -169,13 +169,14 @@ leds: leds {
 gpio nr 编号由具体平台设备驱动实现，计算公式为 `nr = gpiochip->base + offset`。其中 `gpiochip->base` 为 gpio 的 chip 控制器基址（不同于实际硬件地址，只是内核分配给 gpiochip 的一个编号），`offset`为具体 pin 在 chip 的偏移（\in [0, ngpio-1]）。
 > 当 gpiochip->base 指定为 -1 时， gpiochip_add_data 会自动计算基址，即为 ARCH_NR_GPIOS 开始向前占据 ngpio 个编号。
 
-WorkFlow:
+[WorkFlow](./ch2_platform/1_led.c):
 ```c
 pdata->cdev && devm_led_classdev_register_ext
 ```
 
 ### 7. Input
-用于监听和上报来自硬件的输入信号，如键盘\鼠标等。WorkFlow: 
+用于监听和上报来自硬件的输入信号，如键盘\鼠标等。
+[WorkFlow](./ch2_platform/2_input.c): 
 ```c
 devm_input_allocate_device 
     -> set_bit && input_register_device 
@@ -185,3 +186,32 @@ devm_input_allocate_device
 See [input.c](ch2_platform/2_input.c)。
 - `devm_*` 开头的函数用于在设备remove时自动释放自身资源（RAII 思想）。
 - `delayed_work` or `timer` 用于按键消抖。
+
+### 8. I2C
+硬件原理见 [i2c](https://doc.embedfire.com/linux/rk356x/driver/zh/latest/linux_driver/subsystem_i2c.html)。
+当设备树上的节点和具体的 I2C 驱动匹配时，会调用驱动的 `probe` 函数，并为你提供 `i2c_client` 字段，包含 `i2c_adapter` 主机控制器设备，子设备地址 `addr` 等。
+[WorkFlow](./ch2_platform/3_i2c.c): 
+```c
+// Send
+int i2c_transfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num);
+// or
+int i2c_master_send(const struct i2c_client *client, const char *buf, int count)
+int i2c_master_recv(const struct i2c_client *client, char *buf, int count)
+```
+
+### 9. SPI
+
+### 10. FrameBuffer
+用于视频输出设备的显示缓冲区。结合 `mmap` 可以实现用户空间操作单点像素。
+[WorkFlow](./ch2_platform/3_i2c.c):
+```c
+framebuffer_alloc (fbops, fix, var, screen_base, fbdefio)
+    -> dma_alloc_coherent / devm_kmalloc
+    -> fb_deferred_io_init
+    -> register_framebuffer
+        -> fb_write     // write buf to fb
+        -> deferred_io  // update display
+            -> unregister_framebuffer
+            -> fb_deferred_io_cleanup
+            -> dma_free_coherent
+```

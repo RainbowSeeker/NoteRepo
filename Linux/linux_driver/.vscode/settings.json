@@ -50,6 +50,23 @@
         "tuple": "c",
         "type_traits": "c",
         "variant": "c",
-        "of_irq.h": "c"
+        "of_irq.h": "c",
+        "i2c.h": "c",
+        "coroutine": "c",
+        "chrono": "c",
+        "algorithm": "c",
+        "any": "c",
+        "fb.h": "c",
+        "dma-mapping.h": "c",
+        "random": "c",
+        "spi.h": "c",
+        "istream": "cpp",
+        "deque": "c",
+        "list": "c",
+        "unordered_map": "c",
+        "unordered_set": "c",
+        "vector": "c",
+        "thread": "c",
+        "init.h": "c"
     }
 }
