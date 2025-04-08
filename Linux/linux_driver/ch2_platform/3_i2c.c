@@ -38,48 +38,27 @@ static const struct fb_var_screeninfo oled_var = {
     .blue = { .length = 1 },
 };
 
-struct oled_device {
-    struct i2c_client *client;
-    struct fb_info *fb_info;
-
-    u32 width;
-    u32 height;
-    u32 page_offset;
-    u32 com_offset;
-};
-
 struct oled_fb_array {
     u8 type;
     u8 data[];
+};
+
+struct oled_device {
+    struct i2c_client *client;
+    struct fb_info *fb_info;
+    struct oled_fb_array *fb_array;
+
+    u32 width;
+    u32 height;
+    u32 fb_size;
+    u32 page_offset;
+    u32 com_offset;
 };
 
 static int oled_write_cmd(struct oled_device *dev, u8 cmd)
 {
     u8 buf[2] = {OLED_CMD, cmd};
     return i2c_master_send(dev->client, buf, 2) == 2 ? 0 : -EIO;
-}
-
-static struct oled_fb_array *oled_fb_alloc_array(size_t len, u8 type)
-{
-    struct oled_fb_array *array = kzalloc(sizeof(struct oled_fb_array) + len, GFP_KERNEL);
-    if (!array)
-        return NULL;
-
-    array->type = type;
-    return array;
-}
-
-static int oled_write_array(struct oled_device *dev, struct oled_fb_array *array, size_t len)
-{
-    int ret;
-
-    len += sizeof(struct oled_fb_array);
-
-    ret = i2c_master_send(dev->client, (u8 *)array, len);
-    if (ret != len)
-        return ret;
-
-    return 0;
 }
 
 static int oled_bsp_init(struct oled_device *dev)
@@ -114,12 +93,9 @@ static int oled_update_display(struct oled_device *dev)
     u8 *vmem = dev->fb_info->screen_base;
     unsigned int pages = DIV_ROUND_UP(dev->height, 8);
     unsigned int line_len = dev->fb_info->fix.line_length;
-    unsigned int i, j, k;
+    unsigned int i, j, k, len = dev->fb_size + sizeof(struct oled_fb_array);
+    struct oled_fb_array *array = dev->fb_array;
     int ret = 0;
-
-    struct oled_fb_array *array = oled_fb_alloc_array(dev->width * pages, OLED_DATA);
-    if (!array)
-        return -ENOMEM;
 
     for (i = 0; i < pages; i++) {
         for (j = 0; j < dev->width; j++) {
@@ -136,7 +112,7 @@ static int oled_update_display(struct oled_device *dev)
         }
     }
     
-    return oled_write_array(dev, array, dev->width * pages);
+    return i2c_master_send(dev->client, (u8 *)array, len) == len ? 0 : -EIO;
 }
 
 static ssize_t oled_fb_write(struct fb_info *info, const char __user *buf, size_t count, loff_t *ppos)
@@ -157,7 +133,7 @@ static ssize_t oled_fb_write(struct fb_info *info, const char __user *buf, size_
 
     ret = oled_update_display(dev);
 
-    if (ret)
+    if (ret < 0)
         return ret;
 
     *ppos += count;
@@ -177,21 +153,21 @@ static int oled_fb_blank(int blank_mode, struct fb_info *info)
 static void oled_fb_fillrect(struct fb_info *info, const struct fb_fillrect *rect)
 {
     struct oled_device *dev = info->par;
-    sys_fillrect(info, rect);
+    cfb_fillrect(info, rect);
     schedule_delayed_work(&info->deferred_work, 0);
 }
 
 static void oled_fb_copyarea(struct fb_info *info, const struct fb_copyarea *area)
 {
     struct oled_device *dev = info->par;
-    sys_copyarea(info, area);
+    cfb_copyarea(info, area);
     schedule_delayed_work(&info->deferred_work, 0);
 }
 
 static void oled_fb_imageblit(struct fb_info *info, const struct fb_image *image)
 {
     struct oled_device *dev = info->par;
-    sys_imageblit(info, image);
+    cfb_imageblit(info, image);
     schedule_delayed_work(&info->deferred_work, 0);
 }
 
@@ -275,7 +251,9 @@ static int oled_fb_init(struct oled_device *dev)
 
 fail_register:
     fb_deferred_io_cleanup(info);
+#ifdef USE_DMA
     dma_free_coherent(&dev->client->dev, info->fix.smem_len, info->screen_base, info->fix.smem_start);
+#endif
 fail_alloc:
     framebuffer_release(info);
     return ret;
@@ -318,6 +296,12 @@ static int i2c_probe(struct i2c_client *client, const struct i2c_device_id *id)
     if (device_property_read_u32(&client->dev, "solomon,com-offset", &dev->com_offset))
         dev->com_offset = 0;
     
+    dev->fb_size = dev->width * DIV_ROUND_UP(dev->height, 8);
+    dev->fb_array = devm_kzalloc(&client->dev, sizeof(struct oled_fb_array) + dev->fb_size, GFP_KERNEL);
+    if (!dev->fb_array)
+        return -ENOMEM;
+
+    dev->fb_array->type = OLED_DATA;
     dev->client = client;
     i2c_set_clientdata(client, dev);
 

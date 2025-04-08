@@ -2,6 +2,7 @@
 #include <linux/delay.h>
 #include <linux/spi/spi.h>
 #include <linux/of_device.h>
+#include <linux/regmap.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/partitions.h>
 
@@ -24,22 +25,31 @@
 #define W25Q64_SECTOR_SIZE          4096
 #define W25Q64_FLASH_SIZE           (8 * 1024 * 1024)
 
-struct w25q64_platform_data {
+struct w25q64_data {
     struct spi_device *spi;
     struct mtd_info mtd;
     struct mutex lock;
+
+    struct regmap *regmap;
 };
 
-static int w25q64_read_reg(struct spi_device *spi, u8 code, u8 *buf, int len)
+static const struct regmap_config w25q64_regmap_config = {
+    .reg_bits = 8,
+    .val_bits = 8,
+    .max_register = 0xFF,
+};
+
+static int w25q64_read_reg(struct w25q64_data *data, u8 code, u8 *buf, int len)
 {
-    return spi_write_then_read(spi, &code, 1, buf, len);
+    return spi_write_then_read(data->spi, &code, 1, buf, len);
+    // return regmap_bulk_read(data->regmap, code, buf, len);
 }
 
-static int w25q64_write_cmd(struct spi_device *spi, u8 cmd) {
-    return spi_write(spi, &cmd, 1);
+static int w25q64_write_cmd(struct w25q64_data *data, u8 cmd) {
+    return spi_write(data->spi, &cmd, 1);
 }
 
-static int w25q64_wait_ready(struct spi_device *spi, int timeout)
+static int w25q64_wait_ready(struct w25q64_data *data, int timeout)
 {
     unsigned long deadline;
     u8 status;
@@ -48,7 +58,7 @@ static int w25q64_wait_ready(struct spi_device *spi, int timeout)
     deadline = jiffies + msecs_to_jiffies(timeout);
 
     do {
-        ret = w25q64_read_reg(spi, W25Q64_CMD_READ_STATUS, &status, 1);
+        ret = w25q64_read_reg(data, W25Q64_CMD_READ_STATUS, &status, 1);
         if (ret)
             return ret;
 
@@ -61,29 +71,28 @@ static int w25q64_wait_ready(struct spi_device *spi, int timeout)
     return -ETIMEDOUT;
 }
 
-static u32 w25q64_read_id(struct spi_device *spi)
+static inline u32 w25q64_read_id(struct w25q64_data *data)
 {
     u8 buf[3];
-    w25q64_read_reg(spi, W25Q64_CMD_READ_JEDEC_ID, buf, 3);
+    w25q64_read_reg(data, W25Q64_CMD_READ_JEDEC_ID, buf, 3);
 
     return (buf[0] << 16) | (buf[1] << 8) | buf[2];
 }
 
-static int w25q64_read_data(struct spi_device *spi, u32 addr, u8 *buf, u32 len)
+static int w25q64_read_data(struct w25q64_data *data, u32 addr, u8 *buf, u32 len)
 {
     u8 cmd[4] = { W25Q64_CMD_READ_DATA, (addr >> 16) & 0xFF, (addr >> 8) & 0xFF, addr & 0xFF };
-    return spi_write_then_read(spi, cmd, sizeof(cmd), buf, len);
+    return spi_write_then_read(data->spi, cmd, sizeof(cmd), buf, len);
 }
 
-static int w25q64_write_page(struct spi_device *spi, u32 addr, const u8 *buf, u32 len)
+static int w25q64_write_page(struct w25q64_data *data, u32 addr, const u8 *buf, u32 len)
 {
-    struct w25q64_platform_data *pdata = spi_get_drvdata(spi);
     size_t page_offset, chunk;
     int ret, retlen;
     u8 cmd[4];
     struct spi_transfer t[2] = { 0 };
 
-    mutex_lock(&pdata->lock);
+    mutex_lock(&data->lock);
 
     retlen = 0;
     while (len) {
@@ -95,7 +104,7 @@ static int w25q64_write_page(struct spi_device *spi, u32 addr, const u8 *buf, u3
         cmd[2] = (addr >> 8) & 0xFF;
         cmd[3] = addr & 0xFF;
 
-        ret = w25q64_write_cmd(spi, W25Q64_CMD_WRITE_ENABLE);
+        ret = w25q64_write_cmd(data, W25Q64_CMD_WRITE_ENABLE);
         if (ret)
             goto out;
         
@@ -103,11 +112,11 @@ static int w25q64_write_page(struct spi_device *spi, u32 addr, const u8 *buf, u3
         t[0].len = sizeof(cmd);
         t[1].tx_buf = buf;
         t[1].len = chunk;
-        ret = spi_sync_transfer(spi, t, 2);
+        ret = spi_sync_transfer(data->spi, t, 2);
         if (ret)
             goto out;
         
-        ret = w25q64_wait_ready(spi, 10);
+        ret = w25q64_wait_ready(data, 10);
         if (ret)
             goto out;
         
@@ -118,13 +127,12 @@ static int w25q64_write_page(struct spi_device *spi, u32 addr, const u8 *buf, u3
     }
 
 out:
-    mutex_unlock(&pdata->lock);
+    mutex_unlock(&data->lock);
     return ret < 0 ? ret : retlen;
 }
 
-static int w25q64_erase_sector(struct spi_device *spi, u32 addr)
+static int w25q64_erase_sector(struct w25q64_data *data, u32 addr)
 {
-    struct w25q64_platform_data *pdata = spi_get_drvdata(spi);
     u8 cmd[4];
     int ret;
 
@@ -133,22 +141,22 @@ static int w25q64_erase_sector(struct spi_device *spi, u32 addr)
     cmd[2] = (addr >> 8) & 0xFF;
     cmd[3] = addr & 0xFF;
 
-    mutex_lock(&pdata->lock);
+    mutex_lock(&data->lock);
 
-    ret = w25q64_write_cmd(spi, W25Q64_CMD_WRITE_ENABLE);
+    ret = w25q64_write_cmd(data, W25Q64_CMD_WRITE_ENABLE);
     if (ret)
         goto out;
 
-    ret = spi_write(spi, cmd, sizeof(cmd));
+    ret = spi_write(data->spi, cmd, sizeof(cmd));
     if (ret)
         goto out;
     
-    ret = w25q64_wait_ready(spi, 400);
+    ret = w25q64_wait_ready(data, 400);
     if (ret)
         goto out;
 
 out:
-    mutex_unlock(&pdata->lock);
+    mutex_unlock(&data->lock);
     return ret;
 }
 
@@ -156,11 +164,10 @@ out:
 /* ---------- MTD ----------*/
 static int w25q64_mtd_read(struct mtd_info *mtd, loff_t from, size_t len, size_t *retlen, u_char *buf)
 {
-    struct w25q64_platform_data *pdata = container_of(mtd, struct w25q64_platform_data, mtd);
-    struct spi_device *spi = pdata->spi;
+    struct w25q64_data *pdata = container_of(mtd, struct w25q64_data, mtd);
     int ret;
 
-    ret = w25q64_read_data(spi, from, buf, len);
+    ret = w25q64_read_data(pdata, from, buf, len);
     if (ret)
         return ret;
 
@@ -170,16 +177,15 @@ static int w25q64_mtd_read(struct mtd_info *mtd, loff_t from, size_t len, size_t
 
 static int w25q64_mtd_write(struct mtd_info *mtd, loff_t to, size_t len, size_t *retlen, const u_char *buf)
 {
-    struct w25q64_platform_data *pdata = container_of(mtd, struct w25q64_platform_data, mtd);
-    struct spi_device *spi = pdata->spi;
+    struct w25q64_data *pdata = container_of(mtd, struct w25q64_data, mtd);
     int ret;
 
     if (to + len > mtd->size) {
-        dev_err(&spi->dev, "write out of range\n");
+        dev_err(&pdata->spi->dev, "write out of bounds: %lld + %zu > %llu\n", to, len, mtd->size);
         return -EINVAL;
     }
 
-    ret = w25q64_write_page(spi, to, buf, len);
+    ret = w25q64_write_page(pdata, to, buf, len);
     if (ret < 0)
         return ret;
     
@@ -189,8 +195,7 @@ static int w25q64_mtd_write(struct mtd_info *mtd, loff_t to, size_t len, size_t 
 
 static int w25q64_mtd_erase(struct mtd_info *mtd, struct erase_info *instr)
 {
-    struct w25q64_platform_data *pdata = container_of(mtd, struct w25q64_platform_data, mtd);
-    struct spi_device *spi = pdata->spi;
+    struct w25q64_data *pdata = container_of(mtd, struct w25q64_data, mtd);
     u32 addr, end;
     int ret;
 
@@ -202,7 +207,7 @@ static int w25q64_mtd_erase(struct mtd_info *mtd, struct erase_info *instr)
     
     
     while (addr < end) {
-        ret = w25q64_erase_sector(spi, addr);
+        ret = w25q64_erase_sector(pdata, addr);
         if (ret)
             return ret;
         
@@ -214,7 +219,7 @@ static int w25q64_mtd_erase(struct mtd_info *mtd, struct erase_info *instr)
 
 static int spi_probe(struct spi_device *spi)
 {
-    struct w25q64_platform_data *pdata;
+    struct w25q64_data *pdata;
     u32 devid;
     int ret;
 
@@ -222,12 +227,18 @@ static int spi_probe(struct spi_device *spi)
     if (!pdata)
         return -ENOMEM;
 
+    pdata->regmap = devm_regmap_init_spi(spi, &w25q64_regmap_config);
+    if (IS_ERR(pdata->regmap)) {
+        dev_err(&spi->dev, "failed to initialize regmap\n");
+        return PTR_ERR(pdata->regmap);
+    }
+
     mutex_init(&pdata->lock);
     pdata->spi = spi;
     spi_set_drvdata(spi, pdata);
 
     // validate the spi device
-    devid = w25q64_read_id(spi);
+    devid = w25q64_read_id(pdata);
     if (devid != W25Q64_JEDEC_ID) {
         dev_err(&spi->dev, "invalid jedec id: %06x\n", devid);
         return -ENODEV;
@@ -259,7 +270,7 @@ static int spi_probe(struct spi_device *spi)
 
 static int spi_remove(struct spi_device *spi)
 {
-    struct w25q64_platform_data *pdata = spi_get_drvdata(spi);
+    struct w25q64_data *pdata = spi_get_drvdata(spi);
 
     mtd_device_unregister(&pdata->mtd);
     

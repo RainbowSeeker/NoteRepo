@@ -10,7 +10,7 @@ export KERNEL_DIR ARCH CROSS_COMPILE TARGET_IP TARGET_IP_PASSWD TARGET_IP_PORT
 
 SUBDIR := $(shell find . -maxdepth 1 -type d ! -name ".*")
 
-all:  ch2_platform
+all: ch1_char ch2_platform
 
 ch1_char:
 	$(MAKE) -C ch1_char

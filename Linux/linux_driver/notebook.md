@@ -215,3 +215,49 @@ framebuffer_alloc (fbops, fix, var, screen_base, fbdefio)
             -> fb_deferred_io_cleanup
             -> dma_free_coherent
 ```
+
+### 11. Filesystem For Nor Flash
+Nor Flash 可用的文件系统有 `jffs2`，`ubifs`，`fatfs`。
+```dts
+w25q64: flash@0 {
+    status = "okay";
+    // compatible = "winbond,w25q64-spi";
+    compatible = "jedec,spi-nor";
+    reg = <0>;
+    spi-max-frequency = <8000000>; // 10 MHz
+
+    #address-cells = <1>;
+    #size-cells = <1>;
+    partition@0 {
+        label = "bootloader";
+        reg = <0x00000000 0x100000>; // 1 MB
+        read-only;
+    };
+    partition@1 {
+        label = "kernel";
+        reg = <0x100000 0x300000>; // 3 MB
+    };
+    partition@2 {
+        label = "rootfs";
+        reg = <0x400000 0x400000>; // 4 MB
+    };
+};
+```
+```bash
+cat /proc/mtd               # 查看所有mtd设备
+sudo mtdinfo /dev/mtd0      # 查看具体mtd设备信息
+sudo mtd_debug [info]/[read]/[write]/[erase] # mtd 操作命令
+sudo flash_erase /dev/mtd0 0 0  # 擦除全部
+
+# Partition 0: uboot
+sudo dd if=uboot.bin of=/dev/mtd0
+# Partition 1: kernel
+sudo dd if=vmlinuz of=/dev/mtd1
+# Partition 2: rootfs
+#   FS choose 1 -> FAT32
+sudo mkfs.vfat /dev/mtdblock2
+sudo mount -t vfat /dev/mtdblock2 /mnt/flash
+#   FS choose 2 -> JFFS2 (NOT RECOMMEND)
+sudo mkfs.jffs2 -e 8KiB -d ~/test -o /dev/mtdblock2
+sudo mount -t jffs2 /dev/mtdblock2 /mnt/flash
+```

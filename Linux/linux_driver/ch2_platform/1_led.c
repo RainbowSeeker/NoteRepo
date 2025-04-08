@@ -43,7 +43,6 @@ static int led_probe(struct platform_device *pdev)
 {
     struct device_node *np = pdev->dev.of_node;
     struct myled_platform_data *pdata;
-    struct led_init_data init_data = {};
     const char *state;
     int ret = 0;
 
@@ -88,11 +87,7 @@ static int led_probe(struct platform_device *pdev)
     pdata->cdev.brightness_set = led_brightness_set;
     pdata->cdev.brightness_get = led_brightness_get;
 
-    init_data.fwnode = of_fwnode_handle(np);
-    init_data.devicename = "myled";
-    init_data.default_label = ":";
-
-    ret = devm_led_classdev_register_ext(&pdev->dev, &pdata->cdev, &init_data);
+    ret = devm_led_classdev_register(&pdev->dev, &pdata->cdev);
     if (ret) {
         dev_err(&pdev->dev, "Failed to register led\n");
         return ret;
