@@ -13,6 +13,8 @@
 #define CHAR_MAJOR   0
 #define FIFO_SIZE    1024
 
+#define MAX_OPEN_COUNT  5   // can be opened by 5 processes
+
 struct char_desc
 {
     struct mutex lock;
@@ -33,8 +35,7 @@ struct char_device
     struct class *class;
     struct device *device;
     
-    atomic_t is_opened;
-    struct char_desc *desc;
+    atomic_t open_cnt;
 };
 
 static char g_buf[] = "hello world from kernel\n";
@@ -42,65 +43,67 @@ static struct char_device g_chardev;
 
 static int char_open(struct inode *inode, struct file *filp)
 {
-    printk("char_open\n");
-
-    filp->private_data = &g_chardev;
-
     int ret = 0;
-    struct char_device *dev = filp->private_data;
+    struct char_device *dev = &g_chardev;
+    struct char_desc *desc;
 
-    if (atomic_cmpxchg(&dev->is_opened, 0, 1))
+    if (atomic_dec_return(&dev->open_cnt) < 0)
     {
-        printk("device is busy\n");
+        atomic_inc(&dev->open_cnt);
+        printk("chardev is busy\n");
         return -EBUSY;
     }
 
-    dev->desc = kmalloc(sizeof(struct char_desc), GFP_KERNEL);
-    if (!dev->desc)
+    desc = kmalloc(sizeof(struct char_desc), GFP_KERNEL);
+    if (!desc)
     {
         printk("kmalloc failed\n");
         return -ENOMEM;
     }
 
-    mutex_init(&dev->desc->lock);
-    init_waitqueue_head(&dev->desc->r_wait);
-    init_waitqueue_head(&dev->desc->w_wait);
+    mutex_init(&desc->lock);
+    init_waitqueue_head(&desc->r_wait);
+    init_waitqueue_head(&desc->w_wait);
     
-    ret = kfifo_alloc(&dev->desc->fifo, FIFO_SIZE, GFP_KERNEL);
+    ret = kfifo_alloc(&desc->fifo, FIFO_SIZE, GFP_KERNEL);
     if (ret)
     {
         printk("kfifo_alloc failed\n");
-        kfree(dev->desc);
+        kfree(desc);
         return ret;
     }
 
     // fill some data
-    kfifo_in(&dev->desc->fifo, g_buf, sizeof(g_buf));
+    kfifo_in(&desc->fifo, g_buf, sizeof(g_buf));
+
+    filp->private_data = desc;
+
+    printk("chardev open by pid %d, open cnt:%d\n", current->pid, atomic_read(&dev->open_cnt));
 
     return 0;
 }
 
 static int char_release(struct inode *inode, struct file *filp)
 {
-    printk("char_release\n");
-
-    struct char_device *dev = filp->private_data;
-    struct char_desc *desc = dev->desc;
+    struct char_device *dev = &g_chardev;
+    struct char_desc *desc = filp->private_data;
 
     kfifo_free(&desc->fifo);
     kfree(desc);
 
-    atomic_set(&dev->is_opened, 0);
+    atomic_inc(&dev->open_cnt);
+
+    printk("chardev release by pid %d, open cnt:%d\n", current->pid, atomic_read(&dev->open_cnt));
     return 0;
 }
 
 static ssize_t char_read(struct file *filp, char __user *buf, size_t count, loff_t *f_pos)
 {
-    int ret = 0;
+    struct char_desc *desc = filp->private_data;
     unsigned int copied;
     unsigned long flags;
-    struct char_device *dev = filp->private_data;
-    struct char_desc *desc = dev->desc;
+    int ret = 0;
+
 
     printk("char_read\n");
 
@@ -122,6 +125,8 @@ static ssize_t char_read(struct file *filp, char __user *buf, size_t count, loff
     ret = kfifo_to_user(&desc->fifo, buf, count, &copied);
     mutex_unlock(&desc->lock);
 
+    printk("g_buf addr: %px, buf addr: %px\n", g_buf, buf);
+
     if (ret)
         return ret;
 
@@ -134,11 +139,10 @@ static ssize_t char_read(struct file *filp, char __user *buf, size_t count, loff
 
 static ssize_t char_write(struct file *filp, const char __user *buf, size_t count, loff_t *f_pos)
 {
-    int ret = 0;
+    struct char_desc *desc = filp->private_data;
     unsigned int copied;
     unsigned long flags;
-    struct char_device *dev = filp->private_data;
-    struct char_desc *desc = dev->desc;
+    int ret = 0;
 
     printk("char_write\n");
 
@@ -180,8 +184,7 @@ static ssize_t char_write(struct file *filp, const char __user *buf, size_t coun
 
 static long char_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-    struct char_device *dev = filp->private_data;
-    struct char_desc *desc = dev->desc;
+    struct char_desc *desc = filp->private_data;
 
     switch (cmd)
     {
@@ -199,9 +202,8 @@ static long char_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 static unsigned int char_poll(struct file *filp, poll_table *wait)
 {
+    struct char_desc *desc = filp->private_data;
     unsigned int mask = 0;
-    struct char_device *dev = filp->private_data;
-    struct char_desc *desc = dev->desc;
 
     poll_wait(filp, &desc->r_wait, wait);
     poll_wait(filp, &desc->w_wait, wait);
@@ -221,8 +223,7 @@ static unsigned int char_poll(struct file *filp, poll_table *wait)
 
 static int char_fasync(int fd, struct file *filp, int on)
 {
-    struct char_device *dev = filp->private_data;
-    struct char_desc *desc = dev->desc;
+    struct char_desc *desc = filp->private_data;
 
     return fasync_helper(fd, filp, on, &desc->async_queue);
 }
@@ -268,6 +269,8 @@ static int chardev_init(struct char_device *dev)
     dev->devno = MKDEV(dev->major, 0);
 #endif
 
+    atomic_set(&dev->open_cnt, MAX_OPEN_COUNT);
+
     dev->class = class_create(THIS_MODULE, CHAR_NAME);
     if (IS_ERR(dev->class))
     {
@@ -284,17 +287,7 @@ static int chardev_init(struct char_device *dev)
         ret = PTR_ERR(dev->device);
         goto fail_device;
     }
-
-    dev->desc = kmalloc(sizeof(struct char_desc), GFP_KERNEL);
-    if (!dev->desc)
-    {
-        printk("kmalloc failed\n");
-        ret = -ENOMEM;
-        goto fail_device;
-    }
     
-    atomic_set(&dev->is_opened, 0);
-
     return 0;
 
 fail_device:

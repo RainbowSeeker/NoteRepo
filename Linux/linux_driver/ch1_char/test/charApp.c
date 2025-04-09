@@ -4,7 +4,7 @@
 #include <poll.h>
 #include <signal.h>
 
-#define IO_WAY    2 // 0: blocking IO, 1: non-blocking IO (O_NONBLOCK multiplexing), 2: signal IO (SIGIO)
+#define IO_WAY    0 // 0: blocking IO, 1: non-blocking IO (O_NONBLOCK multiplexing), 2: signal IO (SIGIO)
 
 int read_blocking(int fd, char *buf, int len)
 {
@@ -74,6 +74,7 @@ int main()
 
     while (1)
     {
+        printf("rbuf addr: %p\n", rbuf);
         write(fd, "hello world from user\n", 22);
 #if IO_WAY == 0
         read_blocking(fd, rbuf, sizeof(rbuf));

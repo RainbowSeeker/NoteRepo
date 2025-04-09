@@ -51,6 +51,9 @@ reserved-memory {
 void __iomem *regs = ioremap(phys_addr, size);
 ```
 
+> 思考：`copy_to_user` 与 `memcpy` 的替换问题？
+> 答案：`copy_to_user` 相较于 `memcpy` 多了一个内存的合法性检验（uaccess）。当 `MMU` 存在或不存在时，都可以替换。但某些架构，如 arm64 在开启了 `CONFIG_ARM64_PAN` 或 `CONFIG_ARM64_SW_TTBR0_PAN` 配置后，直接访问用户空间地址会触发 kernel oop，详见 [html](http://www.wowotech.net/memory_management/454.html)。
+
 ### 3. kmalloc
 用于分配的一段连续的物理内存，默认按 ARCH_KMALLOC_MINALIGN 对齐（32 位系统通常为 8 字节，64 位系统通常为 16 字节）。
 若分配大小超过 ARCH_KMALLOC_MINALIGN，则按2的幂次对齐（例如分配 64 字节对齐 64 字节）。
@@ -107,7 +110,42 @@ PFN（Page Frame Number，页帧号）：是一个整数，表示物理页在物
 >
 > pmap：查看程序内存分布
 
+#### :star2: IMPORTANT 页、段、块、扇区概念对比
+|概念	|含义	|大小	|操作主体	|主要用途|
+|--|--|--|--|--|
+|页（Page）	|**虚拟内存管理的最小单位**	|:arrow_up:4KB |CPU MMU	|虚拟内存映射、进程隔离	|
+|段（Segment）	|程序在内存中的**逻辑划分**	|可变	|Compiler/OS	|程序内存布局（.text/.data）|
+|块（Block）	|文件系统管理磁盘空间的**基本单位**	|4KB |File System	|文件存储和访问|
+|扇区（Sector）	|物理存储设备的**最小物理读写单位**	|512B/4KB	|磁盘控制器	|磁盘物理读写|
+
+#### 常见问题
+
+1. 为什么页和块大小通常相同（如 4KB）？
+   简化数据在内存和磁盘间的传输，避免多次拆分或合并操作。
+2. 页与内存映射文件（mmap）的关系？
+   通过 mmap 将文件直接映射到进程的虚拟地址空间，以页为单位按需加载到内存。
+   **优势**：避免用户态和内核态的内存拷贝，适合大文件随机访问。
+   **风险**：频繁映射小文件可能浪费内存（每个文件至少占用一页）。
+3. 如何查看进程的地址空间段分布？`pmap <pid>` 或`cat /proc/<pid>/maps`。
+4. 如何确认磁盘的扇区大小？`fdisk -l`
+5. 调整块大小对性能的影响？大块减少元数据开销，适合大文件；小块节省空间，适合小文件。
+
+#### :recycle: ​Page Table
+
+- **内核空间**：所有进程共享内核页表（高地址空间，如 64系统`ffffffff80000000`）。
+- **用户空间**：每个进程拥有独立的页表，低地址空间（如 `0x0000000000000000`）。
+- **ARMv7**：
+
+![img](/home/yangyu/.embedded_linux/linux_driver/.asset/屏幕快照 2020-02-05 15.18.37.png)
+
+![img](/home/yangyu/.embedded_linux/linux_driver/.asset/屏幕快照 2020-02-05 15.33.03.png)
+
+- **x86**：
+
+![img](/home/yangyu/.embedded_linux/linux_driver/.asset/linux-memopt12.png)
+
 ### 5. 中断
+
 - **上半部**：运行在硬件中断上下文中，需要快速执行，通常只记录状态或触发下半部。不能睡眠，不能调用可能阻塞的函数（如 copy_to_user/mutex_lock等）。
 - **下半部**：运行在软中断或进程上下文中，可以处理耗时任务/睡眠。
 #### softirq
@@ -221,10 +259,9 @@ Nor Flash 可用的文件系统有 `jffs2`，`ubifs`，`fatfs`。
 ```dts
 w25q64: flash@0 {
     status = "okay";
-    // compatible = "winbond,w25q64-spi";
     compatible = "jedec,spi-nor";
     reg = <0>;
-    spi-max-frequency = <8000000>; // 10 MHz
+    spi-max-frequency = <8000000>;
 
     #address-cells = <1>;
     #size-cells = <1>;
@@ -261,3 +298,77 @@ sudo mount -t vfat /dev/mtdblock2 /mnt/flash
 sudo mkfs.jffs2 -e 8KiB -d ~/test -o /dev/mtdblock2
 sudo mount -t jffs2 /dev/mtdblock2 /mnt/flash
 ```
+
+### 12. USB
+
+- OTG (On-The-Go)：使同一设备既能充当主机（HOST），也能作为外设（DEVICE）。
+
+#### Function List For USB Device (Gadget)
+| 功能名称         | 描述                             | 内核配置                  | 模块             |
+| ---------------- | -------------------------------- | ------------------------- | ---------------- |
+| **​Mass Storage​**​ | 模拟U盘/存储设备                 | `CONFIG_USB_MASS_STORAGE` | `g_mass_storage` |
+| **​CDC ACM**​      | 模拟串口通信设备（**Serial**）   | `CONFIG_USB_G_SERIAL`     | `g_serial`       |
+| **​CDC ECM​**​      | 模拟CDC以太网设备（**RNDIS**）   | `CONFIG_USB_ETH`          | `g_ether`        |
+| **​UVC​**​          | 模拟USB摄像头                    | `CONFIG_USB_G_WEBCAM`     | `g_webcam`       |
+| HID​​              | 模拟键盘/鼠标等输入设备          | `CONFIG_USB_G_HID`        | `g_hid`          |
+| MTP​​              | 媒体传输协议（手机文件传输）     | `CONFIG_USB_CONFIGFS`     | `configfs`       |
+| MIDI​​             | 模拟MIDI音乐设备                 | `CONFIG_USB_MIDI_GADGET`  | `g_midi`         |
+| Printer​​          | 模拟USB打印机                    | `CONFIG_USB_G_PRINTER`    | `g_printer`      |
+| Audio​​            | 模拟USB音频设备                  | `CONFIG_USB_AUDIO`        | `g_audio`        |
+| FunctionFS​​       | 用户空间自定义功能               | `CONFIG_USB_FUNCTIONFS`   | `g_ffs`          |
+| NCM​​              | 新一代CDC网络控制模型            | `CONFIG_USB_G_NCM`        | `g_ncm`          |
+| **MS && ACM**    | Mass Storage + CDC ACM..         | `CONFIG_USB_G_ACM_MS`     | `g_acm_ms`       |
+| **​g_multi​**​      | Mass Storage + RNDIS + CDC ACM.. | `CONFIG_USB_G_MULTI`      | `g_multi`        |
+
+- Way 1: modprobe
+
+```bash
+sudo modprobe g_acm_ms file=/dev/mtdblock2 removable=y
+sudo modprobe g_multi \
+    file=/dev/mtdblock2 \  			# Mass Storage 使用的磁盘镜像
+    host_addr=12:34:56:78:9a:bc \  	# 设备端 MAC Address
+    dev_addr=de:ad:be:ef:12:34 \   	# 主机端 MAC Address
+    iSerialNumber=12345678 \       	# Serial Number
+    idVendor=0x1d6b \              	# Vendor ID
+    idProduct=0x0104               	# Product ID
+```
+
+- Way 2: configfs
+
+```bash
+#!/bin/bash
+set -e
+
+if [ "$EUID" -ne 0 ]; then
+  echo "Must be root"
+  exit 1
+fi
+
+# mount configfs
+mountpoint /sys/kernel/config > /dev/null || mount -t configfs none /sys/kernel/config
+
+# clear old config
+if [ -d "/sys/kernel/config/usb_gadget/g1" ]; then
+	cd /sys/kernel/config/usb_gadget/g1 || exit 1
+	rm -rf configs/c.1/*
+	rm -rf functions/*
+	cd .. && rmdir g1
+fi
+
+cd /sys/kernel/config/usb_gadget
+mkdir g1 && cd g1
+echo 0x1d6b > idVendor   # Linux Foundation Vendor ID
+echo 0x0104 > idProduct  # Multifunction Composite Gadget
+echo 0x0100 > bcdDevice  # Version v1.0.0
+echo 0x0200 > bcdUSB     # USB 2.0
+mkdir -p strings/0x409
+echo "MySerialDevice" > strings/0x409/manufacturer
+echo "USB Serial Gadget" > strings/0x409/product
+echo "12345678" > strings/0x409/serialnumber
+mkdir -p configs/c.1/strings/0x409
+echo "Serial Config" > configs/c.1/strings/0x409/configuration
+mkdir -p functions/acm.usb0  # 创建ACM（Abstract Control Model）串口
+ln -s functions/acm.usb0 configs/c.1/
+ls /sys/class/udc/ > UDC
+```
+
