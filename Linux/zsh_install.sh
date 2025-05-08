@@ -1,5 +1,5 @@
 #! /usr/bin/env bash
-
+set -e
 sudo DEBIAN_FRONTEND=noninteractive apt-get -y --quiet --no-install-recommends install -y zsh git curl exa zip 
 sudo chsh -s $(which zsh) $(whoami)
 zsh <(curl -sSL https://raw.githubusercontent.com/zimfw/install/master/install.zsh)
